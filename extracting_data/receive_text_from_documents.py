@@ -64,8 +64,8 @@ def is_url_string(s):
 
 def is_path_string(s):
     try:
-        Path(s)
-        return s
+        p = Path(s)
+        return p.is_file()
     except:
         return None
 
