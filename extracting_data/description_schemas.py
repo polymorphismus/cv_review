@@ -3,6 +3,7 @@ from typing import List, Optional
 
 
 class CVExperience(BaseModel):
+    """General experience"""
     title: str = Field(
         description="Job title or role name, e.g. 'Data Scientist', 'ML Engineer'."
     )
@@ -33,10 +34,11 @@ class CVExperience(BaseModel):
 
 
 class CVProject(BaseModel):
+    """Projects from CV"""
     name: str = Field(
         description="Project name or short identifier."
     )
-    description: Optional[str] = Field(
+    project_description: Optional[str] = Field(
         default=None,
         description="Short description of what the project does and its goal."
     )
@@ -44,20 +46,21 @@ class CVProject(BaseModel):
         default_factory=list,
         description="Technologies, frameworks, or tools used in the project."
     )
-    domain: Optional[str] = Field(
+    experience_link: Optional[str] = Field(
         default=None,
-        description="Application domain of the project, e.g. computer vision, NLP, medical imaging."
+        description="Job place or education that the project was done."
     )
 
 
 class CVEducation(BaseModel):
-    degree: Optional[str] = Field(
+    """Education matching"""
+    certification: Optional[str] = Field(
         default=None,
-        description="Degree name, e.g. BSc, MSc, Bootcamp certificate."
+        description="Achived certification like BSc, MSc, Bootcamp certificate, graduate"
     )
     field: Optional[str] = Field(
         default=None,
-        description="Field of study, e.g. Computer Science, Data Science, Statistics."
+        description="Field of study, e.g. Computer Science, Data Science, Statistics, Literature, Art."
     )
     institution: Optional[str] = Field(
         default=None,
@@ -70,6 +73,7 @@ class CVEducation(BaseModel):
 
 
 class CVDescription(BaseModel):
+    """Main class for cv"""
     full_name: Optional[str] = Field(
         default=None,
         description="Candidate full name as written in the CV."
@@ -119,17 +123,14 @@ class CVDescription(BaseModel):
         description="Spoken languages (optional proficiency may be included in text)."
     )
 
-    summary: Optional[str] = Field(
+    cv_summary: Optional[str] = Field(
         default=None,
         description="Short professional summary or profile section from the CV."
     )
 
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
-
-
 class JobDescription(BaseModel):
+    """Extracting valuable fields from job description"""
     job_title: str = Field(
         description="Title of the open position."
     )
@@ -142,11 +143,7 @@ class JobDescription(BaseModel):
         default=None,
         description="Minimum required years of professional experience for the role."
     )
-    seniority_level: Optional[str] = Field(
-        default=None,
-        description="Seniority level such as junior, mid, senior, lead."
-    )
-
+ 
     required_domains: List[str] = Field(
         default_factory=list,
         description="Domains or industries required for the role."
@@ -179,7 +176,7 @@ class JobDescription(BaseModel):
         description="Required soft skills such as communication or teamwork."
     )
 
-    job_summary: Optional[str] = Field(
+    role_summary: Optional[str] = Field(
         default=None,
         description="Short textual summary of the position."
     )

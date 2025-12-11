@@ -3,8 +3,8 @@ from urllib.parse import urlparse
 from pypdf import PdfReader
 from docx import Document
 import textract
-from consts import JOB_DESCRIPTION, INPUT_ATTEMPTS
-from extracting_prompts import EXTRACTION_PROMPT
+from extracting_data.consts import JOB_DESCRIPTION, INPUT_ATTEMPTS
+from extracting_data.extracting_prompts import EXTRACTION_PROMPT
 import requests
 from bs4 import BeautifulSoup
 import os 
@@ -20,7 +20,6 @@ def extract_text_from_url(url: str) -> str:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Remove scripts and styles
         for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
 
@@ -72,11 +71,11 @@ def is_path_string(s):
 
 
 class ReadDocuments:
-    def __init__(self, document_topic=JOB_DESCRIPTION, init_pipeline=True):
+    def __init__(self, doc_input=None, document_topic=JOB_DESCRIPTION, init_pipeline=True):
         self.document_topic = document_topic
         self.llm = None
         self.full_desciption_text = None
-        self.doc_input = None
+        self.doc_input = doc_input
         if init_pipeline:
             self.pipeline()
     

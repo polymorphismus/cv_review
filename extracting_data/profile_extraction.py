@@ -23,7 +23,8 @@ def trustcall_extract_text_to_schema(
     extractor = create_extractor(
         llm=llm,
         tools=[schema],
-        tool_choice="auto"
+        tool_choice="any",
+        enable_inserts=True,
     )
 
     result = extractor.invoke(
@@ -32,8 +33,9 @@ def trustcall_extract_text_to_schema(
                 {
                     "role": "system",
                     "content": (
-                        "Extract the structured information strictly according to the given schema. "
-                        "If a field is missing, return null or an empty list."
+                    "Extract the structured information strictly using the tool. "
+                    "You MUST call the tool. Do NOT output JSON directly."
+                    "If a field is missing, return null or an empty list."
                     ),
                 },
                 {
