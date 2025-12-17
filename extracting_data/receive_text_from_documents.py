@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from pypdf import PdfReader
 from docx import Document
 import textract
-from extracting_data.consts import JOB_DESCRIPTION, INPUT_ATTEMPTS
+from extracting_data.extracting_consts import JOB_DESCRIPTION, INPUT_ATTEMPTS
 from extracting_data.extracting_prompts import EXTRACTION_PROMPT
 import requests
 from bs4 import BeautifulSoup

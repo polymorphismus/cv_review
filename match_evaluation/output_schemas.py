@@ -63,6 +63,14 @@ class RecencyRelevanceResult(BaseModel):
     reasoning: str = Field(description="Assessment of experience recency")
     red_flags: List[str] = Field(description="Concerns about outdated skills")
 
+class KeywordMatchResult(BaseModel):
+    score: float = Field(ge=0, le=100, description="Match score from 0-100 based on keyword presence")
+    matched_keywords: List[str] = Field(description="Critical keywords found in CV (exact matches)")
+    missing_keywords: List[str] = Field(description="Critical keywords NOT found in CV")
+    keyword_frequency: dict = Field(description="How many times each matched keyword appears, e.g. {'Python': 5, 'AWS': 3}")
+    coverage_percentage: float = Field(description="Percentage of critical keywords found (matched/total * 100)")
+    reasoning: str = Field(description="Explanation of keyword match results and ATS implications")
+    red_flags: List[str] = Field(description="Critical keywords missing that could cause ATS rejection")
 
 class WordingMatchResult(BaseModel):
     score: float = Field(description="Match score from 0-100")
@@ -80,5 +88,28 @@ class FinalScoringResult(BaseModel):
     strengths: List[str] = Field(description="Top 3-5 candidate strengths")
     weaknesses: List[str] = Field(description="Top 3-5 gaps or concerns")
     all_red_flags: List[str] = Field(description="Compiled list of all red flags")
-    conclusion: str = Field(description="Detailed 2-3 sentence hiring conclusion")
+    conclusion: str = Field(description="Detailed 2-3 sentence conclusion on wheather it is worht for candidate to continue with this role or not")
     focus_areas: List[str] = Field(description="What the candidate need to work on in order to match the required position")
+
+class WeightingStrategy(BaseModel):
+    """Dynamic weights tailored to specific job requirements"""
+    
+    skills_match: float = Field(ge=0, le=1, description="Weight for technical skills matching")
+    keyword_match: float = Field(ge=0, le=1, description="Weight for ATS keyword matching")
+    requirements_coverage: float = Field(ge=0, le=1, description="Weight for must-have requirements")
+    seniority_match: float = Field(ge=0, le=1, description="Weight for experience level")
+    qualification_match: float = Field(ge=0, le=1, description="Weight for education/certs/portfolio")
+    recency_relevance: float = Field(ge=0, le=1, description="Weight for how current experience is")
+    domain_match: float = Field(ge=0, le=1, description="Weight for industry experience")
+    
+    reasoning: str = Field(description="Why these weights were chosen for this role")
+    role_archetype: str = Field(description="E.g., 'senior-technical', 'entry-level', 'domain-specialist', 'leadership'")
+    
+    @property
+    def total_weight(self) -> float:
+        """Ensure weights sum to 1.0"""
+        return (
+            self.skills_match + self.keyword_match + self.requirements_coverage +
+            self.seniority_match + self.qualification_match +
+            self.recency_relevance + self.domain_match
+        )

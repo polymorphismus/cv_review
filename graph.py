@@ -1,43 +1,8 @@
 from langgraph.graph import StateGraph, START, END
-from langchain_core.runnables.config import RunnableConfig
 from functools import partial
 from match_evaluation.agent_state import AgentState
-from extracting_data.description_schemas import CVDescription, JobDescription
 from match_evaluation.parallel_execution import * 
-from extracting_data.receive_text_from_documents import ReadDocuments
-from extracting_data.profile_extraction import trustcall_extract_text_to_schema
-from extracting_data.consts import JOB_DESCRIPTION, CV
-
-def access_data(state: AgentState, llm):
-    """Read CV and job description documents"""
-    if state.path_to_cv is not None:
-        cv_description_text = ReadDocuments(doc_input = state.path_to_cv, document_topic=CV).full_desciption_text
-    else:
-        cv_description_text = ReadDocuments(document_topic=CV).full_desciption_text
-    
-    if state.path_to_job is not None:
-        job_description_text = ReadDocuments(doc_input = state.path_to_job, document_topic=JOB_DESCRIPTION).full_desciption_text
-    else:
-        job_description_text = ReadDocuments(document_topic=JOB_DESCRIPTION).full_desciption_text
-    return {
-        'cv_description_text': cv_description_text,
-        'job_description_text': job_description_text,
-    }
-
-def extract_job_to_profile(state: AgentState, llm):
-    """Extract job description to structured format"""
-    result = trustcall_extract_text_to_schema(state.job_description_text, JobDescription, llm)
-    return {'job': result}
-    
-def extract_cv_to_profile(state: AgentState, llm):
-    """Extract CV to structured format"""
-    result = trustcall_extract_text_to_schema(state.cv_description_text, CVDescription, llm)
-    return {'cv': result}
-
-def join_extraction(state: AgentState, llm):
-    """Join node - waits for both extractions to complete"""
-    return {}
-
+from extracting_data.extraction_functions import *
 
 def build_graph(llm) -> StateGraph:
     """Build the evaluation graph with parallel execution"""
@@ -54,10 +19,11 @@ def build_graph(llm) -> StateGraph:
     builder.add_node("skills_match", partial(skills_match_agent_sync, llm=llm))
     builder.add_node("domain_match", partial(domain_match_agent_sync, llm=llm))
     builder.add_node("seniority_match", partial(seniority_match_agent_sync, llm=llm))
-    builder.add_node("wording_match", partial(wording_match_agent_sync, llm=llm))
     builder.add_node("recency_relevance", partial(recency_relevance_agent_sync, llm=llm))
     builder.add_node("requirements_coverage", partial(requirements_coverage_agent_sync, llm=llm))
-    
+    builder.add_node("keyword_match", partial(keyword_macth_agent_sync, llm=llm))
+    builder.add_node("weight_generation", partial(weight_generation_agent_sync, llm=llm))
+
     builder.add_node("scoring", partial(scoring_agent_sync, llm=llm))
 
     builder.add_edge(START, "access_data")
@@ -70,13 +36,13 @@ def build_graph(llm) -> StateGraph:
 
     evaluation_nodes = [
         "qualification_match", "skills_match", "domain_match", "seniority_match",
-        "wording_match", "recency_relevance", "requirements_coverage"
+       "recency_relevance", "requirements_coverage", "keyword_match"
     ]
     
     for node in evaluation_nodes:
         builder.add_edge("join_extraction", node)
-        builder.add_edge(node, "scoring")
-
+        builder.add_edge(node, "weight_generation")
+    builder.add_edge("weight_generation", "scoring")
     builder.add_edge("scoring", END)
 
     return builder.compile()

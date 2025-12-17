@@ -1,6 +1,32 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+class Skill(BaseModel):
+    """Generic skill model for both technical and soft skills"""
+    name: str = Field(
+        description="Skill name, e.g. 'Python', 'Project Management', 'Excel', 'Patient Care'"
+    )
+    category: Optional[str] = Field(
+        default=None,
+        description="Flexible category based on domain, e.g. 'Programming', 'Marketing', 'Clinical', 'Financial Analysis'"
+    )
+    proficiency: Optional[str] = Field(
+        default=None,
+        description="Proficiency level: 'basic', 'intermediate', 'advanced', 'expert'"
+    )
+    years_experience: Optional[float] = Field(
+        default=None,
+        description="Years of experience with this skill"
+    )
+    context: Optional[str] = Field(
+        default=None,
+        description="Where/how this skill was used, e.g. 'Used in production systems', 'Led team training'"
+    )
+    priority: Optional[str] = Field(
+        default=None,
+        description="For job requirements: 'must_have', 'strongly_preferred', 'nice_to_have'"
+    )
+
 
 class CVExperience(BaseModel):
     """General experience"""
@@ -31,6 +57,18 @@ class CVExperience(BaseModel):
         default_factory=list,
         description="List of tools, languages, and technologies used in this role."
     )
+    
+    quantifiable_achievements: List[str] = Field(
+        default_factory=list,
+        description="Measurable achievements with numbers/percentages, e.g. 'Reduced latency by 40%'"
+    )
+
+    seniority_level: Optional[str] = Field(
+        default=None,
+        description="Required level of seniority of the experience"
+
+    )
+
 
 
 class CVProject(BaseModel):
@@ -71,6 +109,11 @@ class CVEducation(BaseModel):
         description="Graduation year or completion year."
     )
 
+    is_completed: Optional[bool] = Field(
+        default=None,
+        description="True if completed, False if in progress"
+    )
+
 
 class CVDescription(BaseModel):
     """Main class for cv"""
@@ -92,11 +135,11 @@ class CVDescription(BaseModel):
         default_factory=list,
         description="List of industries or domains the candidate has worked in."
     )
-    technical_skills: List[str] = Field(
+    technical_skills: List[Skill] = Field(
         default_factory=list,
         description="List of technical skills, tools, languages, and frameworks."
     )
-    soft_skills: List[str] = Field(
+    soft_skills: List[Skill] = Field(
         default_factory=list,
         description="List of non-technical skills such as communication, leadership, teamwork."
     )
@@ -118,7 +161,7 @@ class CVDescription(BaseModel):
         default_factory=list,
         description="Professional certificates, courses, or official credentials."
     )
-    languages: List[str] = Field(
+    spoken_languages: List[str] = Field(
         default_factory=list,
         description="Spoken languages (optional proficiency may be included in text)."
     )
@@ -148,13 +191,18 @@ class JobDescription(BaseModel):
         default_factory=list,
         description="Domains or industries required for the role."
     )
-    required_technical_skills: List[str] = Field(
+    required_technical_skills: List[Skill] = Field(
         default_factory=list,
         description="Mandatory technical skills for the position."
     )
-    nice_to_have_skills: List[str] = Field(
+    nice_to_have_skills: List[Skill] = Field(
         default_factory=list,
         description="Optional or bonus technical skills."
+    )
+    
+    other_requirements: List[str] = Field(
+        default_factory=list,
+        description="Non-skill requirements"
     )
 
     responsibilities: List[str] = Field(
@@ -162,16 +210,7 @@ class JobDescription(BaseModel):
         description="Main responsibilities and tasks of the role."
     )
 
-    must_have_requirements: List[str] = Field(
-        default_factory=list,
-        description="Explicit mandatory job requirements."
-    )
-    nice_to_have_requirements: List[str] = Field(
-        default_factory=list,
-        description="Optional or bonus job requirements."
-    )
-
-    soft_skills: List[str] = Field(
+    soft_skills: List[Skill] = Field(
         default_factory=list,
         description="Required soft skills such as communication or teamwork."
     )
@@ -180,3 +219,31 @@ class JobDescription(BaseModel):
         default=None,
         description="Short textual summary of the position."
     )
+
+    required_education: List[CVEducation] = Field(
+    default_factory=list,
+    description="Required education qualifications (degree type, field of study)"
+    )
+
+    required_certifications: List[str] = Field(
+    default_factory=list,
+    description="Mandatory certifications like AWS, PMP, CFA"
+    )
+
+    required_spoken_languages: List[str] = Field(
+    default_factory=list,
+    description="Required languages with optional proficiency levels"
+    )
+
+    required_seniority: Optional[str] = Field(
+        default=None,
+        description="Required level of seniority "
+
+    )
+    
+    critical_keywords: List[str] = Field(
+    default_factory=list,
+    description="Key terms that must appear for ATS to flag as match"
+    )
+
+

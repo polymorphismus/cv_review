@@ -1,4 +1,7 @@
-SKILL_MATCH_PROMPT ="""You are a technical skills matching expert for recruitment.
+SKILL_MATCH_PROMPT ="""
+*Role:**
+You are a strict ATS (Applicant Tracking System) Analyst. 
+Your goal is to evaluate match between technical skills of the candidate and technical skills required for the position
 
 **Job Requirements:**
 Required Technical Skills: {required_skills}
@@ -22,15 +25,26 @@ Evaluate how well the candidate's technical skills match the job requirements.
 - 90-100: All required skills + multiple nice-to-haves
 - 70-89: Most required skills, some gaps
 - 50-69: Partial skills match, significant gaps
-- Below 50: Major skills mismatch"""
+- Below 50: Major skills mismatch
+
+**Example:**
+Required: ["Python", "SQL", "AWS"]
+Candidate: ["Python 3.x", "PostgreSQL", "AWS Lambda"]
+Match: Python (exact: 100%), SQL→PostgreSQL (semantic: 90%), AWS (exact: 100%)
+Score: 97/100
+"""
 
 # ============================================================================
-
-QUALIFICATION_MATCH_PROMPT="""You are an education and qualifications matching expert for recruitment.
+#todo
+QUALIFICATION_MATCH_PROMPT="""
+You are a strict ATS (Applicant Tracking System) Analyst. 
+You specialize in matching education and qualifications between cv and job positions.
 
 **Job Requirements:**
 Must-Have Requirements: {must_have_requirements}
 Required Years of Experience: {required_years_experience}
+Required education: {required_education}
+required certifications: {required_certifications}
 
 **Candidate Qualifications:**
 Education: {education_formatted}
@@ -59,12 +73,57 @@ Evaluate the candidate's formal qualifications, certifications, and project port
 - Fair: 1-2 basic projects or outdated tech
 - Poor: No projects or irrelevant projects"""
 
-# ============================================================================
+KEYWORD_MATCH_PROMPT = """
+**Role:**
+You are an ATS Keyword Analyzer. Your job is to check for EXACT keyword matches that automated systems look for.
 
-SENIORITY_MATCH_PROMPT="""You are a seniority and experience level matching expert.
+**Job Critical Keywords:**
+{critical_keywords}
+
+**CV Full Text:**
+{cv_full_text}
+
+**Your Task:**
+Perform literal, case-insensitive keyword matching. This is NOT semantic matching.
+
+**Matching Rules:**
+1. **Exact Match Only**: "Python" matches "python" but NOT "Python developer" or "Pythonic"
+2. **Case-Insensitive**: "AWS" = "aws" = "Aws"
+3. **Count Frequency**: Track how many times each keyword appears
+4. **No Partial Credit**: "React" does NOT match "ReactJS" or "React.js" unless explicitly listed as equivalent
+
+**Keyword Equivalence Groups** (treat these as same keyword):
+- "Machine Learning" = "ML" 
+- "Artificial Intelligence" = "AI"
+- "JavaScript" = "JS"
+- "TypeScript" = "TS"
+(Only for commonly abbreviated terms)
+
+**Scoring:**
+- Score = (matched_keywords / total_critical_keywords) * 100
+- Frequency matters: Keywords appearing 2-3+ times = stronger signal
+- Missing ANY critical keyword is a red flag
+
+**ATS Pass Likelihood:**
+- High (85-100% keywords matched): Will likely pass ATS
+- Medium (60-84% matched): May pass depending on ATS settings  
+- Low (<60% matched): Likely filtered out by ATS
+
+**Important:**
+- ATS systems are dumb - they look for exact words, not meaning
+- Missing a keyword even if you have the skill = rejection
+- This is why keyword optimization matters
+
+Provide specific optimization suggestions for missing keywords.
+"""
+
+
+
+SENIORITY_MATCH_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. You specialize in a seniority and experience level matching.
 
 **Job Requirements:**
 Required Years of Experience: {required_years_experience}
+Required Seniority: {required_seniority}
 Job Title: {job_title}
 
 **Candidate Experience:**
@@ -89,7 +148,7 @@ Evaluate if the candidate's seniority level matches the job requirements.
 - Lead/Staff: 8-12 years
 - Principal/Architect: 12+ years"""
 
-DOMAIN_MATCH_PROMPT="""You are an industry domain matching expert.
+DOMAIN_MATCH_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. You specialize in industry domain matching.
 
 **Job Requirements:**
 Required Domains/Industries: {required_domains}
@@ -111,12 +170,13 @@ Evaluate the candidate's industry/domain experience relevance.
 
 # ============================================================================
 
-REQUIREMENTS_COVERAGE_PROMPT="""You are a job requirements verification expert.
+REQUIREMENTS_COVERAGE_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. 
+You specialize in job requirements verification.
 
 **Job Requirements:**
 MUST-HAVE Requirements: {must_have}
 NICE-TO-HAVE Requirements: {nice_to_have}
-
+Other requirements: {other_requirements}
 **Candidate Profile:**
 {cv_summary}
 
@@ -156,78 +216,228 @@ Evaluate how recent and relevant the candidate's experience is.
 - Medium decay: Languages, cloud platforms (4-5 years)
 - Slow decay: Algorithms, system design, databases (6-8 years)"""
 
-WORDING_MATCH_PROMPT="""You are a cultural fit and communication style matching expert.
+WEIGHT_GENERATION_PROMPT = """
+**Role:**
+You are an ATS Configuration Specialist. Your job is to determine optimal weights for evaluating THIS specific job posting.
 
-**Job Description Summary:**
-{job_summary}
+**Job Requirements:**
+Job Title: {job_title}
+Required Years of Experience: {required_years_experience}
+Required Seniority: {required_seniority}
+Required Domains: {required_domains}
+Required Technical Skills: {required_technical_skills}
+Required Education: {required_education}
+Required Certifications: {required_certifications}
+Must-Have Requirements: {must_have_requirements}
+Role Summary: {role_summary}
 
-Required Soft Skills: {job_soft_skills}
-
-**Candidate Profile Summary:**
-{cv_summary}
-
-Declared Soft Skills: {cv_soft_skills}
+**Available Evaluation Dimensions:**
+1. **skills_match** (0-1): Technical skills alignment (semantic matching)
+2. **keyword_match** (0-1): Exact keyword matching (ATS filtering)
+3. **requirements_coverage** (0-1): Must-have vs nice-to-have satisfaction
+4. **seniority_match** (0-1): Years of experience and title level
+5. **qualification_match** (0-1): Education, certifications, portfolio quality
+6. **recency_relevance** (0-1): How current/fresh is the experience
+7. **domain_match** (0-1): Industry/domain experience relevance
 
 **Your Task:**
-Evaluate cultural alignment and communication style fit between candidate and role.
+Assign weights (0.0 to 1.0) that sum to 1.0, reflecting what matters MOST for this specific role.
 
-**Evaluation Criteria:**
-1. Language tone match (formal/casual, technical/business-oriented)
-2. Soft skills alignment
-3. Values and work style indicators
-4. Team culture fit signals
-5. Communication clarity and professionalism
+**Weight Assignment Guidelines:**
 
-**Look for alignment in:**
-- Work style (independent vs collaborative)
-- Drive (results-driven, innovative, process-oriented)
-- Career motivations
-- Professional maturity"""
+**For Entry-Level / Junior Roles (0-2 years):**
+- qualification_match: 0.25-0.30 (education matters most)
+- skills_match: 0.20-0.25 (basics covered)
+- seniority_match: 0.05-0.10 (less critical)
+- domain_match: 0.05-0.10 (nice to have)
 
-# ============================================================================
+**For Mid-Level Roles (2-5 years):**
+- skills_match: 0.25-0.30 (skills becoming critical)
+- requirements_coverage: 0.20-0.25 (must satisfy requirements)
+- seniority_match: 0.15-0.20 (experience level matters)
+- domain_match: 0.10-0.15 (relevant experience valued)
 
-SCORING_PROMPT="""You are a final hiring decision expert.
+**For Senior/Lead Roles (5-12 years):**
+- skills_match: 0.25-0.30 (deep expertise required)
+- seniority_match: 0.20-0.25 (proven track record)
+- recency_relevance: 0.15-0.20 (staying current matters)
+- domain_match: 0.15-0.20 (industry knowledge valuable)
 
-**Matching Results:**
+**For Principal/Architect Roles (12+ years):**
+- seniority_match: 0.25-0.30 (experience is king)
+- domain_match: 0.20-0.25 (deep domain expertise)
+- skills_match: 0.15-0.20 (strategic vs hands-on)
 
-Skills Match (weight: 25%):
-Score: {skills_match_score}
-{skills_match}
+**For Domain-Critical Roles (Healthcare, Finance, Legal):**
+- domain_match: 0.25-0.35 (domain is paramount)
+- qualification_match: 0.20-0.25 (certifications/licenses)
+- requirements_coverage: 0.20-0.25 (compliance requirements)
 
-Requirements Coverage (weight: 20%):
-Score: {requirements_coverage_score}
-{requirements_coverage}
+**For ATS-Heavy Companies (Large Corp, High Volume):**
+- keyword_match: 0.20-0.25 (must pass automated filters)
+- requirements_coverage: 0.20-0.25 (checklist matching)
+- skills_match: 0.15-0.20
 
-Seniority Match (weight: 15%):
-Score: {seniority_match_score}
-{seniority_match}
+**For Startups/Fast-Growing Companies:**
+- recency_relevance: 0.15-0.20 (cutting-edge skills)
+- skills_match: 0.20-0.25
+- seniority_match: 0.10-0.15 (less rigid about years)
 
-Qualification Match (weight: 12%, includes portfolio):
-Score: {qualification_match_score}
-{qualification_match}
+**For Portfolio-Heavy Roles (Design, Creative, Some Engineering):**
+- qualification_match: 0.25-0.35 (portfolio quality is key)
+- skills_match: 0.20-0.25
 
-Recency/Relevance (weight: 10%):
-Score: {recency_relevance_score}
-{recency_relevance}
+**Special Considerations:**
+- If role requires specific certifications (AWS, CPA, etc.): boost qualification_match
+- If fast-changing tech (ML, frontend frameworks): boost recency_relevance
+- If niche industry: boost domain_match
+- If many applicants expected: boost keyword_match (ATS will pre-filter)
 
-Domain Match (weight: 10%):
-Score: {domain_match_score}
-{domain_match}
+**Output:**
+Provide weights that sum to exactly 1.0, with reasoning for your choices.
+Identify the role archetype (e.g., "senior-technical", "domain-specialist", "entry-level-generalist").
+"""
 
-Wording/Culture Match (weight: 8%):
-Score: {wording_match_score}
-{wording_match}
+SCORING_PROMPT = """
+**Role:**
+You are a Senior ATS Analyst making the FINAL hiring recommendation.
+You must synthesize all evaluation dimensions and make a data-driven decision with clear reasoning.
 
-Final score smartly averaged: {final_score}
+**Job Information:**
+Title: {job_title}
+Company: {company}
+Required Seniority: {required_seniority}
+Required Years: {required_years_experience}
+
+**Evaluation Results:**
+
+1 **Skills Match** (weight: {weight_skills:.1%})
+   Score: {skills_match_score}/100
+   Matched: {skills_matched}
+   Missing: {skills_missing}
+   Red Flags: {skills_red_flags}
+
+2 **Keyword Match** (weight: {weight_keyword:.1%})
+   Score: {keyword_match_score}/100
+   Missing Keywords: {keyword_missing}
+   Red Flags: {keyword_red_flags}
+
+3 **Requirements Coverage** (weight: {weight_requirements:.1%})
+   Score: {requirements_coverage_score}/100
+   Must-Haves Satisfied: {requirements_satisfied}/{requirements_total}
+   Coverage: {requirements_coverage_pct}%
+   Red Flags: {requirements_red_flags}
+
+4 **Seniority Match** (weight: {weight_seniority:.1%})
+   Score: {seniority_match_score}/100
+   Candidate Level: {candidate_level} | Required: {required_level}
+   Years Gap: {years_gap:+.1f} years
+   Red Flags: {seniority_red_flags}
+
+5 **Qualification Match** (weight: {weight_qualification:.1%})
+   Score: {qualification_match_score}/100
+   Portfolio Quality: {portfolio_quality}
+   Portfolio Boost: +{portfolio_boost} points
+   Red Flags: {qualification_red_flags}
+
+6 **Recency/Relevance** (weight: {weight_recency:.1%})
+   Score: {recency_relevance_score}/100
+   Tech Freshness: {tech_freshness}
+   Red Flags: {recency_red_flags}
+
+7 **Domain Match** (weight: {weight_domain:.1%})
+   Score: {domain_match_score}/100
+   Matched Domains: {domain_matched}
+   Red Flags: {domain_red_flags}
+
+**Weighted Score Calculation:**
+{score_breakdown}
+
+**Preliminary Weighted Score: {weighted_score:.1f}/100**
+
 **Your Task:**
-Calculate final hiring recommendation using the weighted scores.
+Make the final hiring decision using this weighted score AS A STARTING POINT, but with ATS-level reasoning.
 
-**Decision Rules:**
-- 85-100: STRONG_MATCH - Highly recommend interview
-- 70-84: GOOD_MATCH - Recommend interview
-- 55-69: PARTIAL_MATCH - Consider for interview if other factors strong
-- 40-54: WEAK_MATCH - Likely reject unless exceptional in one area
-- 0-39: POOR_MATCH - Reject
+**Decision Framework:**
 
-**Red Flag Override:**
-If 3+ critical red flags exist, max score = 60 regardless of calculation"""
+**STRONG_MATCH (85-100):**
+- All or nearly all critical requirements met
+- No major red flags (or easily addressable gaps)
+- Strong indicators of success in role
+- **Action: Immediate interview / Fast-track**
+
+**GOOD_MATCH (70-84):**
+- Most requirements met with minor gaps
+- 1-2 red flags but not dealbreakers
+- Solid potential for success
+- **Action: Standard interview process**
+
+**PARTIAL_MATCH (55-69):**
+- Partial fit with significant gaps
+- Multiple concerns or red flags
+- Could work if other factors are exceptional
+- **Action: Consider if pipeline is thin, or if one dimension is exceptionally strong**
+
+**WEAK_MATCH (40-54):**
+- Major gaps in critical areas
+- Several red flags
+- Would need significant upskilling
+- **Action: Reject unless exceptional circumstances**
+
+**POOR_MATCH (0-39):**
+- Fundamental mismatch
+- Does not meet basic requirements
+- **Action: Auto-reject**
+
+**Critical Override Rules:**
+1. **Dealbreaker Override**: If ANY dimension has a "critical" red flag (e.g., missing required certification, wrong work authorization), max score = 50 regardless of other scores
+2. **ATS Failure Override**: If keyword_match < 60 AND keyword_match weight > 0.15, this candidate would likely be filtered out by ATS before human review. Flag this clearly.
+3. **Red Flag Threshold**: If total red flags across all dimensions >= 5, max score = 60
+4. **Exceptional Strength Boost**: If ANY dimension scores 95+ and has high weight, add narrative about this standout quality
+
+**Your Detailed Analysis Must Include:**
+
+1. **Overall Assessment** (2-3 sentences)
+   - Does weighted score accurately reflect fit?
+   - Any overrides or adjustments needed?
+   - Key insight driving the decision
+
+2. **Strengths** (3-5 bullet points)
+   - What makes this candidate compelling?
+   - Which evaluation dimensions were strongest?
+   - Specific evidence (matched skills, years of experience, etc.)
+
+3. **Weaknesses** (3-5 bullet points)
+   - What are the gaps or concerns?
+   - Which dimensions pulled the score down?
+   - Specific missing requirements or red flags
+
+4. **All Red Flags Compiled** (comprehensive list)
+   - Gather ALL red flags from every dimension
+   - Prioritize by severity (critical vs moderate vs minor)
+
+5. **Focus Areas for Candidate** (if they want to improve)
+   - What should they work on to become a better match?
+   - Specific skills, certifications, or experience to gain
+   - How to optimize their CV for ATS
+
+6. **Final Conclusion** (3-4 sentences)
+   - Clear hire/no-hire recommendation
+   - Confidence level in this decision (high/medium/low)
+   - Next steps or conditions (e.g., "Interview but probe on X", "Reject but revisit in 6 months")
+
+**Important Considerations:**
+- The weighted score is a GUIDE, not gospel. Use your judgment.
+- A 72 is meaningfully different from a 68 (crosses threshold), but 84 vs 86 is not.
+- Context matters: a 65 from a junior candidate might be more promising than a 75 from an overqualified senior.
+- Real ATS systems would use the weighted score mechanically, but add human reasoning here.
+- If the role has specific critical requirements (certification, domain, etc.), those should override the weighted average.
+
+**Output Requirements:**
+- decision: One of the 5 categories above
+- strengths: 3-5 specific strengths with evidence
+- weaknesses: 3-5 specific gaps with impact assessment
+- all_red_flags: Complete compiled list, severity-sorted
+- conclusion: 3-4 sentence final recommendation with confidence level
+- focus_areas: 3-5 actionable improvement suggestions for candidate
+"""

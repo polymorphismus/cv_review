@@ -1,0 +1,269 @@
+from match_evaluation.agent_state import AgentState
+from improvement_suggestions.improvement_state import CVRewriteState
+from improvement_suggestions.improvement_prompts import MAIN_UPDATE_CV_PROMPT, CV_FEEDBACK_UPDATE_PROMPT 
+from improvement_suggestions.improvement_output_schema import UpdatedCvResult
+from improvement_suggestions.improvement_consts import SAVING_FONT, UPDATED_CV_NAME
+import os
+from docx import Document
+from docx.shared import Pt
+import re
+
+
+def render_experience(experiences):
+    """
+    Renders experience entries into a flat, readable text block
+    suitable for LLM prompt injection.
+    """
+
+    blocks = []
+
+    for exp in experiences:
+        header = f"{exp.title} | {exp.company} | {exp.start_date} - {exp.end_date}"
+        blocks.append(header)
+
+        if getattr(exp, "responsibilities", None):
+            for r in exp.responsibilities:
+                blocks.append(f"- {r}")
+
+        if getattr(exp, "quantifiable_achievements", None):
+            for q in exp.quantifiable_achievements:
+                blocks.append(f"- {q}")
+
+        blocks.append("") 
+
+    return "\n".join(blocks).strip()
+
+def add_runs_with_formatting(paragraph, text):
+        """
+        Handles **bold** and *italic* inline formatting.
+        """
+        tokens = re.split(r"(\*\*.*?\*\*|\*.*?\*)", text)
+
+        for token in tokens:
+            if token.startswith("**") and token.endswith("**"):
+                run = paragraph.add_run(token[2:-2])
+                run.bold = True
+            elif token.startswith("*") and token.endswith("*"):
+                run = paragraph.add_run(token[1:-1])
+                run.italic = True
+            else:
+                paragraph.add_run(token)
+
+def prompt_user_to_cv_rewrite(state: CVRewriteState, llm):
+    input = ('Do you want to continue to updating your CV to match profile better? Answer yes or no')
+    answered_understood = False
+    while answered_understood == False:
+        if any([input.lower() in answer for answer in ['y','yes']]):
+            answered_understood = True
+            return True
+        elif any([input.lower() in answer for answer in ['n','no']]):
+            answered_understood = True
+            return False
+        else:
+            input = ('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?')   
+
+def prompt_user_satisfaction(state: CVRewriteState, llm):
+    input = ('Would you like to change anything in the creted CV? Answer yes or no')
+    answered_understood = False
+    rewrite = False
+    while answered_understood == False:
+        if any([input.lower() in answer for answer in ['y','yes']]):
+            answered_understood = True
+            return True
+        elif any([input.lower() in answer for answer in ['n','no']]):
+            answered_understood = True
+            return False
+        else:
+            input = ('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?')   
+
+def receive_user_feedback(state: CVRewriteState, llm):
+    input = ('Please share your thoughts on what needs to be changed')
+    return {'user_feedback' : input}
+    
+
+
+def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
+    """
+    Extract only the essential information needed for CV rewriting.
+    This reduces token usage and focuses the LLM on relevant data.
+    """
+    return CVRewriteState(
+        # Core documents
+        original_cv_folder_path = "/".join(state.path_to_cv.split('/')[:-1]),
+        original_cv=state.cv,
+        target_job=state.job,
+        
+        # Skills optimization
+        matched_skills=state.skills_match.matched_items,
+        partial_skill_matches=state.skills_match.partial_matches,
+        matched_keywords=state.keyword_match.matched_keywords,
+        missing_keywords=state.keyword_match.missing_keywords,
+        
+        # Requirements
+        must_haves_satisfied=state.requirements_coverage.must_have_satisfied,
+        must_haves_missing=state.requirements_coverage.must_have_missing,
+        nice_to_haves_satisfied=state.requirements_coverage.nice_to_have_satisfied,
+        
+        # Experience context
+        recent_relevant_experience=state.recency_relevance.recent_relevant_experience,
+        matched_domains=state.domain_match.matched_items,
+        transferable_domains=state.domain_match.transferable_experience,
+        
+        # Seniority
+        candidate_level=state.seniority_match.candidate_level,
+        required_level=state.seniority_match.required_level,
+        title_alignment=state.seniority_match.title_alignment,
+        
+        # Strategic priorities
+        top_strengths=state.final_score.strengths[:5],  # Top 5 only
+        key_weaknesses=state.final_score.weaknesses[:3],  # Top 3 only
+        red_flags=state.final_score.all_red_flags,
+        
+        # Keyword optimization
+        keyword_frequency_targets=state.keyword_match.keyword_frequency,
+        focus_areas=state.final_score.focus_areas or []
+    )
+
+
+def rewrite_cv_initial(state: CVRewriteState, llm):
+    updating_cv_prompt = MAIN_UPDATE_CV_PROMPT.format(
+        full_name=state.original_cv.full_name,
+        current_title=state.original_cv.current_title,
+        total_years_experience=state.original_cv.total_years_experience,
+        cv_domains=", ".join(state.original_cv.domains),
+        technical_skills="\n".join(f"- {s.name}" for s in state.original_cv.technical_skills),
+        soft_skills="\n".join(f"- {s.name}" for s in state.original_cv.soft_skills),
+        experience_history=render_experience(state.original_cv.experience),
+        projects="\n".join(p.name for p in state.original_cv.projects),
+        education="\n".join(f"{e.certification} in {e.field}" for e in state.original_cv.education),
+        certifications="\n".join(state.original_cv.certifications),
+        languages="\n".join(state.original_cv.spoken_languages),
+
+        job_title=state.target_job.job_title,
+        company=state.target_job.company,
+        required_years_experience=state.target_job.required_years_experience,
+        required_seniority=state.target_job.required_seniority,
+        required_domains=", ".join(state.target_job.required_domains),
+        job_responsibilities="\n".join(state.target_job.responsibilities),
+        job_required_skills="\n".join(state.target_job.required_technical_skills),
+        job_nice_to_have_skills="\n".join(state.target_job.nice_to_have_skills),
+        job_critical_keywords="\n".join(state.target_job.critical_keywords),
+        job_role_summary=state.target_job.role_summary,
+
+        matched_skills="\n".join(state.matched_skills),
+        partial_skill_matches="\n".join(state.partial_skill_matches),
+        matched_keywords="\n".join(state.matched_keywords),
+        missing_keywords="\n".join(state.missing_keywords),
+        keyword_frequency_targets=str(state.keyword_frequency_targets),
+
+        must_haves_satisfied="\n".join(state.must_haves_satisfied),
+        must_haves_missing="\n".join(state.must_haves_missing),
+        nice_to_haves_satisfied="\n".join(state.nice_to_haves_satisfied),
+
+        recent_relevant_experience="\n".join(state.recent_relevant_experience),
+        matched_domains="\n".join(state.matched_domains),
+        transferable_domains="\n".join(state.transferable_domains),
+
+        candidate_level=state.candidate_level,
+        required_level=state.required_level,
+        title_alignment=state.title_alignment,
+
+        top_strengths="\n".join(state.top_strengths),
+        key_weaknesses="\n".join(state.key_weaknesses),
+        red_flags="\n".join(state.red_flags),
+        focus_areas="\n".join(state.focus_areas),
+        user_feedback=state.user_feedback or "None"
+    )
+
+    
+    result = llm.with_structured_output(UpdatedCvResult).invoke(updating_cv_prompt)
+    return {'updated_cv_text':  result.updated_cv_text}
+
+
+def rewrite_cv_with_feedback(state: CVRewriteState, llm):
+    updating_cv_with_feedback_prompt = CV_FEEDBACK_UPDATE_PROMPT.format(
+    user_feedback=state.user_feedback,
+    updated_cv_text=state.updated_cv_text,
+
+    full_name=state.original_cv.full_name,
+    total_years_experience=state.original_cv.total_years_experience,
+
+    original_experience_excerpt="\n".join(
+        f"- {exp.title} at {exp.company}: {', '.join(exp.responsibilities[:2])}"
+        for exp in state.original_cv.experience
+    ),
+    original_skills=", ".join(s.name for s in state.original_cv.technical_skills),
+    original_projects="\n".join(
+        f"- {p.name}: {p.project_description}"
+        for p in state.original_cv.projects
+    ),
+
+    job_title=state.target_job.job_title,
+    company=state.target_job.company,
+
+    matched_keywords="\n".join(state.matched_keywords[:10]),
+    must_haves_satisfied="\n".join(state.must_haves_satisfied[:5]),
+)
+
+
+    
+    result = llm.with_structured_output(UpdatedCvResult).invoke(updating_cv_with_feedback_prompt)
+    return {'updated_cv_text':  result.updated_cv_text}
+
+
+def markdown_to_docx(state: CVRewriteState, llm) -> None:
+    doc = Document()
+    markdown_text = state.updated_cv_text
+    # ---- Global style ----
+    normal_style = doc.styles["Normal"]
+    normal_style.font.name =SAVING_FONT
+    normal_style.font.size = Pt(11)
+
+    
+
+    for raw_line in markdown_text.splitlines():
+        line = raw_line.rstrip()
+
+        # ---- Headings ----
+        if line.startswith("### "):
+            p = doc.add_heading(level=3)
+            run = p.add_run(line[4:])
+            run.font.name = SAVING_FONT
+            run.font.size = Pt(12)
+            run.bold = True
+
+        elif line.startswith("## "):
+            p = doc.add_heading(level=2)
+            run = p.add_run(line[3:])
+            run.font.name = SAVING_FONT
+            run.font.size = Pt(13)
+            run.bold = True
+
+        elif line.startswith("# "):
+            p = doc.add_heading(level=1)
+            run = p.add_run(line[2:])
+            run.font.name =SAVING_FONT
+            run.font.size = Pt(14)
+            run.bold = True
+
+        # ---- Bullet list ----
+        elif line.startswith("- ") or line.startswith("* "):
+            p = doc.add_paragraph(style="List Bullet")
+            add_runs_with_formatting(p, line[2:])
+
+        # ---- Numbered list ----
+        elif re.match(r"\d+\.\s+", line):
+            p = doc.add_paragraph(style="List Number")
+            content = re.sub(r"^\d+\.\s+", "", line)
+            add_runs_with_formatting(p, content)
+
+        # ---- Empty line ----
+        elif line == "":
+            doc.add_paragraph("")
+
+        # ---- Normal paragraph ----
+        else:
+            p = doc.add_paragraph()
+            add_runs_with_formatting(p, line)
+
+    doc.save(os.path.join(state.original_cv_folder_path, UPDATED_CV_NAME))

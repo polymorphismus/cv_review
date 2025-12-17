@@ -17,10 +17,11 @@ class AgentState(BaseModel):
     skills_match: Optional[SkillsMatchResult] = None
     domain_match: Optional[DomainMatchResult] = None
     seniority_match: Optional[SeniorityMatchResult] = None
-    wording_match: Optional[WordingMatchResult] = None
     recency_relevance: Optional[RecencyRelevanceResult] = None
     requirements_coverage: Optional[RequirementsCoverageResult] = None
-    
+    keyword_match: Optional[KeywordMatchResult] = None
+    weighting_strategy: Optional[WeightingStrategy] = None
+
     final_score: Optional[FinalScoringResult] = None
     decision: Optional[str] = None
     conclusion: Optional[str] = None
