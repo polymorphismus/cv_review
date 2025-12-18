@@ -2,7 +2,7 @@ from match_evaluation.agent_state import AgentState
 from improvement_suggestions.improvement_state import CVRewriteState
 from improvement_suggestions.improvement_prompts import MAIN_UPDATE_CV_PROMPT, CV_FEEDBACK_UPDATE_PROMPT 
 from improvement_suggestions.improvement_output_schema import UpdatedCvResult
-from improvement_suggestions.improvement_consts import SAVING_FONT, UPDATED_CV_NAME
+from improvement_suggestions.improvement_consts import SAVING_FONT, UPDATED_CV_NAME, AMOUNT_FEEDBACK_ROUNDS
 import os
 from docx import Document
 from docx.shared import Pt
@@ -49,38 +49,36 @@ def add_runs_with_formatting(paragraph, text):
             else:
                 paragraph.add_run(token)
 
-def prompt_user_to_cv_rewrite(state: CVRewriteState, llm):
-    input = ('Do you want to continue to updating your CV to match profile better? Answer yes or no')
+def prompt_user_to_cv_rewrite(state: AgentState,):
+    continue_decision = input('Do you want to update your CV to match profile better? Answer yes or no\n')
     answered_understood = False
     while answered_understood == False:
-        if any([input.lower() in answer for answer in ['y','yes']]):
+        if any([continue_decision.lower() in answer for answer in ['y','yes']]):
             answered_understood = True
-            return True
-        elif any([input.lower() in answer for answer in ['n','no']]):
+            return 'rewrite'
+        elif any([continue_decision.lower() in answer for answer in ['n','no']]):
             answered_understood = True
-            return False
+            return 'finish'
         else:
-            input = ('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?')   
+            continue_decision = input('Please answer "yes" or "no", to answer whether you want to update your CV to match profile better?\n')   
 
-def prompt_user_satisfaction(state: CVRewriteState, llm):
-    input = ('Would you like to change anything in the creted CV? Answer yes or no')
+def prompt_user_satisfaction(state: CVRewriteState):
+    user_satisfaction = input('Would you like to change anything in the created CV? Answer yes or no\n')
     answered_understood = False
-    rewrite = False
     while answered_understood == False:
-        if any([input.lower() in answer for answer in ['y','yes']]):
+        if any([user_satisfaction.lower() in answer for answer in ['y','yes']]):
             answered_understood = True
-            return True
-        elif any([input.lower() in answer for answer in ['n','no']]):
+            return 'change needed'
+        elif any([user_satisfaction.lower() in answer for answer in ['n','no']]):
             answered_understood = True
-            return False
+            return 'no change'
         else:
-            input = ('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?')   
+            user_satisfaction = input('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?\n')   
 
 def receive_user_feedback(state: CVRewriteState, llm):
     input = ('Please share your thoughts on what needs to be changed')
     return {'user_feedback' : input}
     
-
 
 def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
     """
@@ -115,13 +113,13 @@ def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
         title_alignment=state.seniority_match.title_alignment,
         
         # Strategic priorities
-        top_strengths=state.final_score.strengths[:5],  # Top 5 only
-        key_weaknesses=state.final_score.weaknesses[:3],  # Top 3 only
-        red_flags=state.final_score.all_red_flags,
+        top_strengths=state.final_scoring.strengths[:5],  # Top 5 only
+        key_weaknesses=state.final_scoring.weaknesses[:3],  # Top 3 only
+        red_flags=state.all_red_flags,
         
         # Keyword optimization
         keyword_frequency_targets=state.keyword_match.keyword_frequency,
-        focus_areas=state.final_score.focus_areas or []
+        focus_areas=state.final_scoring.focus_areas or []
     )
 
 
@@ -145,7 +143,7 @@ def rewrite_cv_initial(state: CVRewriteState, llm):
         required_seniority=state.target_job.required_seniority,
         required_domains=", ".join(state.target_job.required_domains),
         job_responsibilities="\n".join(state.target_job.responsibilities),
-        job_required_skills="\n".join(state.target_job.required_technical_skills),
+        job_required_skills="\n".join([skill.name for skill in  state.target_job.required_technical_skills]),
         job_nice_to_have_skills="\n".join(state.target_job.nice_to_have_skills),
         job_critical_keywords="\n".join(state.target_job.critical_keywords),
         job_role_summary=state.target_job.role_summary,
@@ -172,7 +170,6 @@ def rewrite_cv_initial(state: CVRewriteState, llm):
         key_weaknesses="\n".join(state.key_weaknesses),
         red_flags="\n".join(state.red_flags),
         focus_areas="\n".join(state.focus_areas),
-        user_feedback=state.user_feedback or "None"
     )
 
     
@@ -208,7 +205,8 @@ def rewrite_cv_with_feedback(state: CVRewriteState, llm):
 
     
     result = llm.with_structured_output(UpdatedCvResult).invoke(updating_cv_with_feedback_prompt)
-    return {'updated_cv_text':  result.updated_cv_text}
+    feedback_round = state.feedback_round +1
+    return {'updated_cv_text':  result.updated_cv_text, "feedback_round": feedback_round}
 
 
 def markdown_to_docx(state: CVRewriteState, llm) -> None:
@@ -267,3 +265,4 @@ def markdown_to_docx(state: CVRewriteState, llm) -> None:
             add_runs_with_formatting(p, line)
 
     doc.save(os.path.join(state.original_cv_folder_path, UPDATED_CV_NAME))
+    return {}

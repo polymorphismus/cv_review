@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Optional
 from extracting_data.description_schemas import CVDescription, JobDescription
 
 class CVRewriteState(BaseModel):
@@ -45,8 +45,17 @@ class CVRewriteState(BaseModel):
         default_factory=list
     )
 
-    user_feedback: str = Field(description="Feedback user gave to update the created cv")
-    updated_cv_text: str = Field(description="Full rewritten CV in clean Markdown format, optimized for ATS parsing and human review")
+    user_feedback: Optional[str] = Field(
+        default=None,
+        description="Feedback user gave to update the created cv"
+    )
+
+    updated_cv_text: Optional[str] = Field(
+        default=None,
+        description="Full rewritten CV in clean Markdown format, optimized for ATS parsing and human review"
+    )
+
+    feedback_round: int = 0
 
     class Config:
         arbitrary_types_allowed = True

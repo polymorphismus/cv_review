@@ -87,10 +87,9 @@ class FinalScoringResult(BaseModel):
     decision: str = Field(description="STRONG_MATCH/GOOD_MATCH/PARTIAL_MATCH/WEAK_MATCH/POOR_MATCH")
     strengths: List[str] = Field(description="Top 3-5 candidate strengths")
     weaknesses: List[str] = Field(description="Top 3-5 gaps or concerns")
-    all_red_flags: List[str] = Field(description="Compiled list of all red flags")
-    conclusion: str = Field(description="Detailed 2-3 sentence conclusion on wheather it is worht for candidate to continue with this role or not")
+    recommendation: str = Field(description="Detailed 2-3 sentence recommendation on wheather it is worth for candidate to apply to this role or not")
     focus_areas: List[str] = Field(description="What the candidate need to work on in order to match the required position")
-
+ 
 class WeightingStrategy(BaseModel):
     """Dynamic weights tailored to specific job requirements"""
     

@@ -412,19 +412,14 @@ Make the final hiring decision using this weighted score AS A STARTING POINT, bu
    - Which dimensions pulled the score down?
    - Specific missing requirements or red flags
 
-4. **All Red Flags Compiled** (comprehensive list)
-   - Gather ALL red flags from every dimension
-   - Prioritize by severity (critical vs moderate vs minor)
-
-5. **Focus Areas for Candidate** (if they want to improve)
+4. **Focus Areas for Candidate** (if they want to improve)
    - What should they work on to become a better match?
    - Specific skills, certifications, or experience to gain
    - How to optimize their CV for ATS
 
-6. **Final Conclusion** (3-4 sentences)
-   - Clear hire/no-hire recommendation
+5. **Recommendation** (3-4 sentences)
+   - Recommendation for the candidate weather it's worth for them to continue updating the CV to match or it's too many changes
    - Confidence level in this decision (high/medium/low)
-   - Next steps or conditions (e.g., "Interview but probe on X", "Reject but revisit in 6 months")
 
 **Important Considerations:**
 - The weighted score is a GUIDE, not gospel. Use your judgment.
@@ -437,7 +432,6 @@ Make the final hiring decision using this weighted score AS A STARTING POINT, bu
 - decision: One of the 5 categories above
 - strengths: 3-5 specific strengths with evidence
 - weaknesses: 3-5 specific gaps with impact assessment
-- all_red_flags: Complete compiled list, severity-sorted
-- conclusion: 3-4 sentence final recommendation with confidence level
+- recommendation: 3-4 sentence final recommendation with confidence level
 - focus_areas: 3-5 actionable improvement suggestions for candidate
 """

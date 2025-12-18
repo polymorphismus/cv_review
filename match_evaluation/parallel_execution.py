@@ -180,7 +180,7 @@ def weight_generation_agent_sync(state: AgentState, llm) -> dict:
     return {"weighting_strategy": result}
 
 
-def scoring_agent_sync(state: AgentState, llm) -> FinalScoringResult:
+def scoring_agent_sync(state: AgentState, llm):
     """Final scoring with dynamic weights and ATS reasoning"""
     
     print("Final scoring...")
@@ -211,7 +211,7 @@ def scoring_agent_sync(state: AgentState, llm) -> FinalScoringResult:
                       'recency_relevance', 'domain_match']:
         all_red_flags_list.extend(getattr(state, dimension).red_flags)
     
-    result = llm.with_structured_output(FinalScoringResult).invoke(
+    result = llm.with_structured_output(FinalScoringResult, method="json_mode").invoke(
         SCORING_PROMPT.format(
             job_title=state.job.job_title,
             company=state.job.company or "Not specified",
@@ -275,16 +275,16 @@ def scoring_agent_sync(state: AgentState, llm) -> FinalScoringResult:
     )
     formatted_focus_areas = "\n * " + "\n * ".join(result.focus_areas)
     print("\n"* 5)
-    print(f"""Final score: {weighted_score}
+    print(f"""Weighted score: {weighted_score}
     Areas that you need to work on in order to natually become a better candidate for this poition:
     {formatted_focus_areas}
-    Advice on continuing: {result.conclusion}""")
+    Advice on continuing: {result.recommendation}""")
     return {
         "decision": result.decision,
-        "final_score": weighted_score,
-        "conclusion": result.conclusion,
+        "recommendation": result.recommendation,
+        "final_scoring": result,
         "focus_areas": result.focus_areas,
-        "all_red_flags": result.all_red_flags,
+        "all_red_flags": all_red_flags_list,
         "weaknesses": result.weaknesses,
         "strengths": result.strengths,
     }

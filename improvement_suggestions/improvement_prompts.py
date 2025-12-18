@@ -138,9 +138,6 @@ Red Flags (avoid triggering them):
 Primary Focus Areas:
 {focus_areas}
 
-User Feedback (must be respected):
-{user_feedback}
-
 ====================
 REWRITE INSTRUCTIONS
 ====================
@@ -197,32 +194,7 @@ Do NOT claim higher seniority or ownership than stated.
 OUTPUT FORMAT
 ====================
 
-Return the FULL rewritten CV in clean Markdown:
-
-# {full_name}
-[Contact information from original CV]
-
-## Professional Summary
-...
-
-## Technical Skills
-...
-
-## Work Experience
-...
-
-## Projects
-...
-
-## Education
-...
-
-## Certifications
-...
-
-## Languages
-...
-
+Return the FULL rewritten CV in clean Markdown
 ====================
 FINAL CHECK
 ====================

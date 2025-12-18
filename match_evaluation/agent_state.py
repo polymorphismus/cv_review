@@ -22,7 +22,7 @@ class AgentState(BaseModel):
     keyword_match: Optional[KeywordMatchResult] = None
     weighting_strategy: Optional[WeightingStrategy] = None
 
-    final_score: Optional[FinalScoringResult] = None
+    final_scoring: Optional[FinalScoringResult] = None
     decision: Optional[str] = None
     conclusion: Optional[str] = None
     focus_areas: List[str] = None

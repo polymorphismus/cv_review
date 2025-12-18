@@ -125,7 +125,8 @@ class ReadDocuments:
             print(f'Failed to get the text for {self.document_topic}. See you next time')
 
 if __name__ == '__main__':
-    cv_path = '/Users/lisapolotskaia/Documents/CVs/round_2/base_cv_ds.pdf'
-    job_description_path = '/Users/lisapolotskaia/Downloads/Co Founder Head of AI PigO.pdf' 
-    docs = ReadDocuments()
+    cv_path = '/Users/lisapolotskaia/Downloads/lisa_polotckaia_cv.pdf'
+    job_description_path = '/Users/lisapolotskaia/Downloads/job_description_ds.txt'
+
+    docs = ReadDocuments(doc_input=job_description_path)
     print(docs.full_desciption_text)
