@@ -42,18 +42,21 @@ into independent agents.
     -   technical skills
     -   domain relevance
     -   seniority and experience level
-    -   wording and positioning quality
-4.  **Centralized Scoring** A dedicated scoring agent:
+    -   recency and relevance of experience
+    -   requirements coverage (must-haves/nice-to-haves)
+    -   ATS keyword match
+4.  **Weight Generation** A dedicated agent produces dynamic weights
+    based on the role type and requirements.
+5.  **Centralized Scoring** A dedicated scoring agent:
     -   aggregates all evaluation signals
     -   computes the final match score
-    -   generates a structured explanation
-5.  **Decision Routing** A decision agent determines whether:
-    -   the CV is already a strong match
-    -   a rewrite is recommended
-    -   the position is not relevant
-6.  **Conditional Rewrite (Optional)** If the user approves rewriting:
-    -   only weak sections are rewritten
-    -   the full CV is reassembled into a consistent updated version
+    -   generates a structured explanation and recommendation
+6.  **Decision Routing** The user is prompted to decide whether to
+    rewrite the CV.
+7.  **Conditional Rewrite (Optional)** If the user approves rewriting:
+    -   an optimized CV is generated
+    -   a feedback loop refines the output
+    -   a DOCX is exported at the end
 
 ------------------------------------------------------------------------
 
@@ -76,8 +79,8 @@ This ensures: - explainable decisions - controlled generation - no
 -   Ingest Agent\
     Converts files into clean text.
 
--   Structuring Agent\
-    Extracts structured objects from text.
+-   Structuring Agents\
+    Extract structured objects from text.
 
 -   Qualification Match Agent\
     Evaluates hard job requirements.
@@ -91,20 +94,23 @@ This ensures: - explainable decisions - controlled generation - no
 -   Seniority Match Agent\
     Evaluates experience level.
 
--   Wording Match Agent\
-    Evaluates clarity and role positioning.
+-   Recency/Relevance Agent\
+    Evaluates how current the experience is.
+
+-   Requirements Coverage Agent\
+    Evaluates must-haves and nice-to-haves coverage.
+
+-   Keyword Match Agent\
+    Evaluates ATS keyword alignment.
+
+-   Weight Generation Agent\
+    Produces dynamic weights per role.
 
 -   Scoring Agent\
     Aggregates all evaluations into a final score and explanation.
 
--   Decision Agent\
-    Decides whether a rewrite is recommended.
-
--   Rewrite Agent\
-    Rewrites only weak CV sections.
-
--   CV Assembly Agent\
-    Rebuilds a consistent final CV.
+-   Rewrite Flow\
+    Builds an optimized CV with optional feedback loop and DOCX export.
 
 ------------------------------------------------------------------------
 
@@ -114,28 +120,39 @@ This ensures: - explainable decisions - controlled generation - no
 graph TD
 
 A[User Uploads CV + Job] --> B[Ingest Agent]
-B --> C[Structuring Agent]
+B --> C1[Extract Job Profile]
+B --> C2[Extract CV Profile]
+C1 --> D[Join Extraction]
+C2 --> D
 
-C --> D1[Qualification Match Agent]
-C --> D2[Skills Match Agent]
-C --> D3[Domain Match Agent]
-C --> D4[Seniority Match Agent]
-C --> D5[Wording Match Agent]
+D --> E1[Qualification Match]
+D --> E2[Skills Match]
+D --> E3[Domain Match]
+D --> E4[Seniority Match]
+D --> E5[Recency/Relevance]
+D --> E6[Requirements Coverage]
+D --> E7[Keyword Match]
 
-D1 --> E[Scoring Agent]
-D2 --> E
-D3 --> E
-D4 --> E
-D5 --> E
+E1 --> F[Weight Generation]
+E2 --> F
+E3 --> F
+E4 --> F
+E5 --> F
+E6 --> F
+E7 --> F
 
-E --> F[Decision Agent]
+F --> G[Scoring]
 
-F -->|Strong Match| G[Final Report]
-F -->|Not Relevant| G
-F -->|Rewrite Recommended| H[Rewrite Agent]
-
-H --> I[CV Assembly Agent]
-I --> G
+G --> H[User Prompt: Rewrite?]
+H -->|No| Z[Final Report]
+H -->|Yes| I[Create Rewrite State]
+I --> J[Rewrite CV Initial]
+J --> K{User Satisfied?}
+K -->|Yes| L[Markdown → DOCX]
+K -->|No| M[Receive Feedback]
+M --> N[Rewrite with Feedback]
+N --> K
+L --> Z
 ```
 
 ------------------------------------------------------------------------

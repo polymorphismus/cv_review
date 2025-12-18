@@ -3,6 +3,9 @@ python-docx
 textract==1.6.3
 requests
 beautifulsoup4
+pydantic
+langchain-core
 langchain-openai
+langgraph
 trustcall
-dotenv
+python-dotenv

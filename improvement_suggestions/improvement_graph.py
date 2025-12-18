@@ -37,10 +37,7 @@ def build_rewrite_graph(llm) -> StateGraph:
 
     return builder.compile()
 
-
-def run_rewrite_flow(state: AgentState, llm):
+def run_rewrite_flow(state: AgentState, llm, rewrite_graph):
     rewrite_state = create_rewrite_state(state, llm)
-    rewrite_graph = build_rewrite_graph(llm)
     rewrite_graph.invoke(rewrite_state)
     return {}
-
