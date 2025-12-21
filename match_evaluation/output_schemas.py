@@ -84,7 +84,7 @@ class WordingMatchResult(BaseModel):
 
 
 class FinalScoringResult(BaseModel):
-    decision: str = Field(description="STRONG_MATCH/GOOD_MATCH/PARTIAL_MATCH/WEAK_MATCH/POOR_MATCH")
+    decision: str = Field(description="Strong Match/Good Match/Partial Match/Weak Match/Poor Match")
     strengths: List[str] = Field(description="Top 3-5 candidate strengths")
     weaknesses: List[str] = Field(description="Top 3-5 gaps or concerns")
     recommendation: str = Field(description="Detailed 2-3 sentence recommendation on wheather it is worth for candidate to apply to this role or not")

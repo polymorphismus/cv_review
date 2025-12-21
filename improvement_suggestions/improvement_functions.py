@@ -1,4 +1,5 @@
 from match_evaluation.agent_state import AgentState
+from extracting_data.description_schemas import CVDescription, JobDescription
 from improvement_suggestions.improvement_state import CVRewriteState
 from improvement_suggestions.improvement_prompts import MAIN_UPDATE_CV_PROMPT, CV_FEEDBACK_UPDATE_PROMPT 
 from improvement_suggestions.improvement_output_schema import UpdatedCvResult
@@ -8,6 +9,7 @@ from docx import Document
 from docx.shared import Pt
 import re
 from pathlib import Path
+from typing import Any
 
 
 def render_experience(experiences):
@@ -102,50 +104,96 @@ def receive_user_feedback(state: CVRewriteState, llm):
     return {'user_feedback' : input}
     
 
+def _state_get(state, key, default=None):
+    if isinstance(state, dict):
+        return state.get(key, default)
+    return getattr(state, key, default)
+
+def _coerce_to_model(value, model_cls):
+    """
+    Ensure we pass actual model instances (or dicts convertible) to CVRewriteState.
+    Handles BaseModel-like objects, dicts, or already-correct instances.
+    """
+    if value is None:
+        return None
+    if isinstance(value, model_cls):
+        return value
+    if hasattr(value, "model_dump"):
+        try:
+            value = value.model_dump()
+        except Exception:
+            pass
+    if isinstance(value, dict):
+        try:
+            return model_cls.model_validate(value)
+        except Exception:
+            return value
+    return value
+
+
+def _invoke_updated_cv(prompt: str, llm: Any) -> dict:
+    """
+    Try structured output; if the model returns an unexpected shape, fall back to raw content.
+    """
+    try:
+        result = llm.with_structured_output(UpdatedCvResult).invoke(prompt)
+        if hasattr(result, "updated_cv_text"):
+            return {"updated_cv_text": result.updated_cv_text}
+    except Exception:
+        pass
+
+    raw = llm.invoke(prompt)
+    updated_cv_text = getattr(raw, "content", None) or getattr(raw, "text", None) or str(raw)
+    return {"updated_cv_text": updated_cv_text}
+
+
 def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
     """
     Extract only the essential information needed for CV rewriting.
     This reduces token usage and focuses the LLM on relevant data.
     """
-    original_folder = "/".join(state.path_to_cv.split('/')[:-1]) if state.path_to_cv else str((Path.cwd() / "outputs").resolve())
+    path_to_cv = _state_get(state, "path_to_cv")
+    original_folder = "/".join(path_to_cv.split('/')[:-1]) if path_to_cv else str((Path.cwd() / "outputs").resolve())
     output_dir = original_folder
     Path(output_dir).mkdir(parents=True, exist_ok=True)
+    original_cv = _coerce_to_model(_state_get(state, "cv"), CVDescription)
+    target_job = _coerce_to_model(_state_get(state, "job"), JobDescription)
     return CVRewriteState(
         # Core documents
         original_cv_folder_path = original_folder,
         output_dir=output_dir,
-        original_cv=state.cv,
-        target_job=state.job,
-        original_cv_text=state.cv_description_text,
+        original_cv=original_cv,
+        target_job=target_job,
+        original_cv_text=_state_get(state, "cv_description_text"),
         
         # Skills optimization
-        matched_skills=state.skills_match.matched_items,
-        partial_skill_matches=state.skills_match.partial_matches,
-        matched_keywords=state.keyword_match.matched_keywords,
-        missing_keywords=state.keyword_match.missing_keywords,
+        matched_skills=_state_get(state, "skills_match").matched_items,
+        partial_skill_matches=_state_get(state, "skills_match").partial_matches,
+        matched_keywords=_state_get(state, "keyword_match").matched_keywords,
+        missing_keywords=_state_get(state, "keyword_match").missing_keywords,
         
         # Requirements
-        must_haves_satisfied=state.requirements_coverage.must_have_satisfied,
-        must_haves_missing=state.requirements_coverage.must_have_missing,
-        nice_to_haves_satisfied=state.requirements_coverage.nice_to_have_satisfied,
+        must_haves_satisfied=_state_get(state, "requirements_coverage").must_have_satisfied,
+        must_haves_missing=_state_get(state, "requirements_coverage").must_have_missing,
+        nice_to_haves_satisfied=_state_get(state, "requirements_coverage").nice_to_have_satisfied,
         
         # Experience context
-        recent_relevant_experience=state.recency_relevance.recent_relevant_experience,
-        matched_domains=state.domain_match.matched_items,
-        transferable_domains=state.domain_match.transferable_experience,
+        recent_relevant_experience=_state_get(state, "recency_relevance").recent_relevant_experience,
+        matched_domains=_state_get(state, "domain_match").matched_items,
+        transferable_domains=_state_get(state, "domain_match").transferable_experience,
         
         # Seniority
-        candidate_level=state.seniority_match.candidate_level,
-        required_level=state.seniority_match.required_level,
-        title_alignment=state.seniority_match.title_alignment,
+        candidate_level=_state_get(state, "seniority_match").candidate_level,
+        required_level=_state_get(state, "seniority_match").required_level,
+        title_alignment=_state_get(state, "seniority_match").title_alignment,
         
         # Strategic priorities
-        top_strengths=state.final_scoring.strengths[:5],  
-        key_weaknesses=state.final_scoring.weaknesses[:3], 
-        red_flags=state.all_red_flags,
+        top_strengths=_state_get(state, "final_scoring").strengths[:5],  
+        key_weaknesses=_state_get(state, "final_scoring").weaknesses[:3], 
+        red_flags=_state_get(state, "all_red_flags"),
         
-        keyword_frequency_targets=state.keyword_match.keyword_frequency,
-        focus_areas=state.final_scoring.focus_areas or []
+        keyword_frequency_targets=_state_get(state, "keyword_match").keyword_frequency,
+        focus_areas=_state_get(state, "final_scoring").focus_areas or []
     )
 
 
@@ -198,10 +246,7 @@ def rewrite_cv_initial(state: CVRewriteState, llm):
         red_flags="\n".join(state.red_flags),
         focus_areas="\n".join(state.focus_areas),
     )
-
-    
-    result = llm.with_structured_output(UpdatedCvResult).invoke(updating_cv_prompt)
-    return {'updated_cv_text':  result.updated_cv_text}
+    return _invoke_updated_cv(updating_cv_prompt, llm)
 
 
 def rewrite_cv_with_feedback(state: CVRewriteState, llm):
@@ -228,12 +273,10 @@ def rewrite_cv_with_feedback(state: CVRewriteState, llm):
     matched_keywords="\n".join(state.matched_keywords[:10]),
     must_haves_satisfied="\n".join(state.must_haves_satisfied[:5]),
 )
-
-
-    
-    result = llm.with_structured_output(UpdatedCvResult).invoke(updating_cv_with_feedback_prompt)
+    result = _invoke_updated_cv(updating_cv_with_feedback_prompt, llm)
     feedback_round = state.feedback_round +1
-    return {'updated_cv_text':  result.updated_cv_text, "feedback_round": feedback_round}
+    result["feedback_round"] = feedback_round
+    return result
 
 
 def markdown_to_docx(state: CVRewriteState, llm) -> None:

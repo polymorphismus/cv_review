@@ -1,9 +1,11 @@
 import os
+import io
+import contextlib
 from uuid import uuid4
 from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
-
+c
 from consts import MODEL_NAME
 from langchain_openai import ChatOpenAI
 
@@ -26,6 +28,10 @@ OUTPUT_DIR = BASE_DIR / "outputs"
 UPLOAD_DIR = OUTPUT_DIR / "uploads"
 OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
+INITIAL_MESSAGE = {
+    "role": "assistant",
+    "content": "Provide your CV and the target job description. You can paste text, upload a file, or share a link.",
+}
 
 
 def init_llm():
@@ -89,6 +95,46 @@ def _get(state, key, default=None):
     return getattr(state, key, default)
 
 
+class StreamlitProgressLogger(io.StringIO):
+    """
+    Captures stdout prints from background execution without calling Streamlit
+    from worker threads. Render with `render(placeholder)` on the main thread.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.steps = []
+
+    def write(self, s):
+        for raw_line in s.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if self.steps and self.steps[-1]["status"] == "running":
+                self.steps[-1]["status"] = "done"
+            self.steps.append({"text": line, "status": "running"})
+        return len(s)
+
+    def finish(self):
+        if self.steps and self.steps[-1]["status"] == "running":
+            self.steps[-1]["status"] = "done"
+
+    def render(self, placeholder):
+        with placeholder.container():
+            st.markdown("### Assesing match between CV and position")
+            for step in self.steps:
+                icon = "✅" if step["status"] == "done" else "⏳"
+                st.markdown(f"{icon} {step['text']}")
+
+
+def render_steps(title, steps, placeholder):
+    with placeholder.container():
+        st.markdown(f"<h2 style='margin-bottom:0'>{title}</h2>", unsafe_allow_html=True)
+        for step in steps:
+            icon = "✅" if step["status"] == "done" else "⏳"
+            st.markdown(f"{icon} {step['text']}")
+
+
 def render_evaluation_results(state: AgentState):
     st.subheader("Match Assessment")
     top_score = _get(state, "weighted_score")
@@ -96,21 +142,10 @@ def render_evaluation_results(state: AgentState):
     decision = _get(final_scoring, "decision", "N/A")
     recommendation = _get(final_scoring, "recommendation", "")
 
-    cols = st.columns(3)
-    cols[0].metric(
-        "Weighted score",
-        f"{top_score:.1f}" if isinstance(top_score, float) else (top_score or "N/A"),
-    )
-    cols[1].metric("Decision", decision)
-    cols[2].metric("Focus areas", len(_get(state, "focus_areas", []) or []))
+    st.metric("Decision", decision)
 
     if recommendation:
         st.info(recommendation)
-
-    score_breakdown = _get(state, "score_breakdown")
-    if score_breakdown:
-        with st.expander("Show scoring breakdown"):
-            st.code(score_breakdown)
 
     eval_sections = [
         ("Skills", _get(state, "skills_match")),
@@ -127,19 +162,43 @@ def render_evaluation_results(state: AgentState):
             continue
         score = _get(result, "score", 0)
         reasoning = _get(result, "reasoning", "")
-        with st.expander(f"{title}: {score:.1f} — Show reasoning"):
+        with st.expander(f"{title}: show details"):
             st.markdown(reasoning)
             red_flags = _get(result, "red_flags", [])
             if red_flags:
                 if red_flags:
                     st.warning("Red flags: " + "; ".join(red_flags))
 
+        # After keyword match, show focus areas dropdown if available
+        if title == "Keyword match":
+            focus_areas = _get(state, "focus_areas", []) or _get(final_scoring, "focus_areas", [])
+            if focus_areas:
+                with st.expander("Focus areas / recommendations"):
+                    st.markdown("\n".join(f"- {fa}" for fa in focus_areas))
+
 
 def render_rewrite_section(agent_state: AgentState, llm):
-    st.subheader("Rewrite CV")
+    st.subheader("Updated CV")
+    if isinstance(agent_state, dict):
+        try:
+            agent_state = AgentState.model_validate(agent_state)
+        except Exception:
+            pass
+    # Only block if core profiles are missing; other signals are helpful but not strictly required
+    if not getattr(agent_state, "cv", None) or not getattr(agent_state, "job", None):
+        st.info("Complete an assessment before rewriting.")
+        return
     rewrite_state = st.session_state.get("rewrite_state")
     if st.session_state.get("rewrite_running"):
         st.info("CV rewrite in progress...")
+
+    # Initialize download state flags
+    if "docx_ready" not in st.session_state:
+        st.session_state.docx_ready = False
+    if "docx_downloaded" not in st.session_state:
+        st.session_state.docx_downloaded = False
+    if "download_requested" not in st.session_state:
+        st.session_state.download_requested = False
 
     if rewrite_state is None:
         if st.button("Rewrite my CV to fit this job"):
@@ -150,13 +209,15 @@ def render_rewrite_section(agent_state: AgentState, llm):
                     updates = rewrite_cv_initial(rewrite_state, llm)
                     rewrite_state = rewrite_state.model_copy(update=updates)
                     st.session_state.rewrite_state = rewrite_state
+                    st.session_state.docx_ready = False
+                    st.session_state.docx_downloaded = False
+                    st.session_state.docx_path = None
             finally:
                 st.session_state.rewrite_running = False
-            add_message("assistant", "Here's a rewritten CV draft in Markdown.")
+            add_message("assistant", "CV draft is ready")
             st.rerun()
         return
 
-    st.markdown("#### Updated CV (Markdown)")
     st.markdown(rewrite_state.updated_cv_text)
 
     if rewrite_state.feedback_round < AMOUNT_FEEDBACK_ROUNDS:
@@ -175,40 +236,63 @@ def render_rewrite_section(agent_state: AgentState, llm):
                         updates = rewrite_cv_with_feedback(rewrite_state, llm)
                         rewrite_state = rewrite_state.model_copy(update=updates)
                         st.session_state.rewrite_state = rewrite_state
+                        st.session_state.docx_ready = False
+                        st.session_state.docx_downloaded = False
+                        st.session_state.docx_path = None
                 finally:
                     st.session_state.rewrite_running = False
-                add_message("assistant", "Updated the CV based on your feedback.")
+                add_message("assistant", "Updated the CV based on your feedback")
                 st.rerun()
     else:
         st.info("Feedback limit reached.")
 
-    if st.button("Finalize and prepare DOCX"):
-        with st.spinner("Preparing DOCX..."):
+    # Handle download flow
+    if st.session_state.download_requested or (not st.session_state.docx_ready and rewrite_state.updated_cv_text):
+        with st.spinner("Preparing CV as doc..."):
             doc_info = markdown_to_docx(rewrite_state, llm)
             st.session_state.docx_path = doc_info.get("docx_path")
-        add_message("assistant", "Your updated CV is ready to download.")
-        st.rerun()
+        st.session_state.docx_ready = True
+        st.session_state.download_requested = False
 
     docx_path = st.session_state.get("docx_path")
     if docx_path and Path(docx_path).exists():
         with open(docx_path, "rb") as f:
-            st.download_button(
-                "Download updated CV (DOCX)",
+            clicked = st.download_button(
+                "Download updated CV" if not st.session_state.docx_downloaded else "Current version of CV downloaded",
                 f,
                 file_name=Path(docx_path).name or UPDATED_CV_NAME,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                disabled=st.session_state.docx_downloaded,
+                key="download_cv_button",
+                use_container_width=True,
             )
+            if clicked:
+                st.session_state.docx_downloaded = True
+                st.rerun()
+            if st.session_state.docx_downloaded:
+                st.markdown(
+                    """
+                    <style>
+                    div[data-testid="stDownloadButton"][key="download_cv_button"] button {
+                        background-color: #1b4332 !important;
+                        color: #ffffff !important;
+                        border: 1px solid #1b4332 !important;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+    else:
+        if st.button("Download updated CV", use_container_width=True, key="download_request_btn"):
+            st.session_state.download_requested = True
+            st.session_state.docx_downloaded = False
+            st.rerun()
 
 
 def main():
     st.set_page_config(page_title="CV ↔ Job Match", layout="wide")
     if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {
-                "role": "assistant",
-                "content": "Provide your CV and the target job description. You can paste text, upload a file, or share a link.",
-            }
-        ]
+        st.session_state.messages = [INITIAL_MESSAGE.copy()]
     if "assessment_running" not in st.session_state:
         st.session_state.assessment_running = False
     if "rewrite_running" not in st.session_state:
@@ -216,69 +300,203 @@ def main():
 
     llm = init_llm()
     init_graphs(llm)
-    render_messages()
 
-    status_placeholder = st.empty()
+    # Sticky sidebar on the right column with scrollable messages
+    st.markdown(
+        """
+        <style>
+        .sidebar-inner {
+            position: sticky;
+            top: 0.5rem;
+            max-height: calc(100vh - 1rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .scroll-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .download-complete button {
+            background-color: #1b4332 !important;
+            color: #ffffff !important;
+            border: 1px solid #1b4332 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_main, col_sidebar = st.columns([0.72, 0.28], gap="large")
+    progress_placeholder = col_main.empty()
+
+    # Initialize persisted form fields (cache values, not widget keys)
+    for key in ["cv_text", "job_text", "cv_link_cached", "job_link_cached", "path_to_cv", "path_to_job"]:
+        if key not in st.session_state:
+            st.session_state[key] = ""
+
+    def reset_inputs(clear_cv: bool, clear_job: bool, reset_messages: bool = False):
+        if clear_cv:
+            st.session_state.cv_text = ""
+            st.session_state.cv_link_cached = ""
+            st.session_state["cv_link_input"] = ""
+            st.session_state.pop("path_to_cv", None)
+            st.session_state.pop("cv_upload", None)
+        if clear_job:
+            st.session_state.job_text = ""
+            st.session_state.job_link_cached = ""
+            st.session_state["job_link_input"] = ""
+            st.session_state.pop("path_to_job", None)
+            st.session_state.pop("job_upload", None)
+        for key in ["agent_state", "rewrite_state", "docx_path", "docx_ready", "docx_downloaded", "download_requested"]:
+            st.session_state.pop(key, None)
+        st.session_state.assessment_running = False
+        if reset_messages:
+            st.session_state.messages = [INITIAL_MESSAGE.copy()]
+        st.rerun()
+
+    def cache_from_state(cache_cv: bool = False, cache_job: bool = False):
+        state = st.session_state.get("agent_state")
+        if not state:
+            return
+        try:
+            state = AgentState.model_validate(state)
+        except Exception:
+            pass
+        if cache_cv:
+            st.session_state.cv_text = getattr(state, "cv_description_text", st.session_state.get("cv_text", ""))
+            st.session_state.path_to_cv = getattr(state, "path_to_cv", st.session_state.get("path_to_cv"))
+            st.session_state.cv_link_cached = st.session_state.path_to_cv or st.session_state.get("cv_link_cached", "")
+        if cache_job:
+            st.session_state.job_text = getattr(state, "job_description_text", st.session_state.get("job_text", ""))
+            st.session_state.path_to_job = getattr(state, "path_to_job", st.session_state.get("path_to_job"))
+            st.session_state.job_link_cached = st.session_state.path_to_job or st.session_state.get("job_link_cached", "")
+
+    def reset_for_another_position():
+        cache_from_state(cache_cv=True, cache_job=False)
+        reset_inputs(clear_cv=False, clear_job=True, reset_messages=False)
+
+    def reset_for_another_cv():
+        cache_from_state(cache_cv=False, cache_job=True)
+        reset_inputs(clear_cv=True, clear_job=False, reset_messages=False)
+
+    def reset_for_new_assessment():
+        reset_inputs(clear_cv=True, clear_job=True, reset_messages=True)
+
+    with col_sidebar:
+        with st.container():
+            st.markdown('<div class="sidebar-inner">', unsafe_allow_html=True)
+            if st.button("Assess with another position", use_container_width=True, key="btn_another_position"):
+                reset_for_another_position()
+            if st.button("Assess with another CV", use_container_width=True, key="btn_another_cv"):
+                reset_for_another_cv()
+            if st.button("New assessment", use_container_width=True, key="btn_new_assessment"):
+                reset_for_new_assessment()
+            st.divider()
+            st.markdown("**Messages**")
+            st.markdown('<div class="scroll-messages">', unsafe_allow_html=True)
+            render_messages()
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     if st.session_state.assessment_running:
-        with status_placeholder.container():
-            st.info("Assessment is running...")
-    elif "agent_state" not in st.session_state:
-        form_placeholder = st.empty()
+        pass
+    elif not st.session_state.get("agent_state"):
+        form_placeholder = col_main.empty()
         with form_placeholder.container():
             st.markdown("### Provide documents")
             col_cv, col_job = st.columns(2)
             with col_cv:
-                st.markdown("**CV**")
+                st.markdown("**CV**: choose option to provide it below")
                 cv_text = st.text_area("Paste CV text", height=200, key="cv_text")
                 cv_upload = st.file_uploader("Upload CV file (.pdf, .docx, .txt)", key="cv_upload")
-                cv_link = st.text_input("CV link or local path", key="cv_link")
+                cv_link = st.text_input(
+                    "CV link or local path",
+                    value=st.session_state.get("cv_link_cached", ""),
+                    key="cv_link_input",
+                )
             with col_job:
-                st.markdown("**Job description**")
+                st.markdown("**Job description**: choose option to provide it below")
                 job_text = st.text_area("Paste job description text", height=200, key="job_text")
                 job_upload = st.file_uploader("Upload job description file (.pdf, .docx, .txt)", key="job_upload")
-                job_link = st.text_input("Job link or local path", key="job_link")
+                job_link = st.text_input(
+                    "Job link or local path",
+                    value=st.session_state.get("job_link_cached", ""),
+                    key="job_link_input",
+                )
 
-            if st.button("Run assessment"):
-                st.session_state.assessment_running = True
-                form_placeholder.empty()
-                add_message("assistant", "Running extraction and evaluation...")
-                with status_placeholder.container():
-                    with st.spinner("Running assessment..."):
-                        try:
-                            cv_desc, cv_path = prepare_document(CV, cv_text, cv_link, cv_upload, llm)
-                            job_desc, job_path = prepare_document(JOB_DESCRIPTION, job_text, job_link, job_upload, llm)
+        if st.button("Run match assessment"):
+            st.session_state.assessment_running = True
+            form_placeholder.empty()
+            add_message("assistant", "Running extraction and evaluation...")
+            extraction_steps = [
+                {"text": "Extracting job information...", "status": "running"},
+                {"text": "Extracting CV information...", "status": "running"},
+            ]
+            evaluation_steps = [
+                {"text": "Assessing domain...", "status": "pending"},
+                {"text": "Assessing keyword match...", "status": "pending"},
+                {"text": "Assessing qualification...", "status": "pending"},
+                {"text": "Assessing relevance...", "status": "pending"},
+                {"text": "Assessing requirements coverage...", "status": "pending"},
+                {"text": "Assessing seniority...", "status": "pending"},
+                {"text": "Assessing skills...", "status": "pending"},
+                {"text": "Weighting scores based on importance", "status": "pending"},
+            ]
+            render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+            try:
+                cv_desc, cv_path = prepare_document(CV, cv_text, cv_link, cv_upload, llm)
+                job_desc, job_path = prepare_document(JOB_DESCRIPTION, job_text, job_link, job_upload, llm)
+                st.session_state.path_to_cv = cv_path
+                st.session_state.path_to_job = job_path
+                if cv_path:
+                    st.session_state.cv_link_cached = cv_path
+                if job_path:
+                    st.session_state.job_link_cached = job_path
 
-                            if not cv_desc or not job_desc:
-                                st.error("Please provide both CV and job description (text, file, or link).")
-                            else:
-                                base_state = AgentState(
-                                    path_to_cv=cv_path,
-                                    path_to_job=job_path,
-                                    cv_description_text=cv_desc,
-                                    job_description_text=job_desc,
-                                )
-                                extracted_state = run_extraction_flow(
-                                    base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
-                                )
-                                evaluated_state = run_evaluation_flow(
-                                    extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
-                                )
-                                try:
-                                    evaluated_state = AgentState.model_validate(evaluated_state)
-                                except Exception:
-                                    pass
-                                st.session_state.agent_state = evaluated_state
-                                st.session_state.rewrite_state = None
-                                st.session_state.docx_path = None
-                                add_message("assistant", "Assessment complete. See details below.")
-                                st.rerun()
-                        finally:
-                            st.session_state.assessment_running = False
+                if not cv_desc or not job_desc:
+                    st.error("Please provide both CV and job description (text, file, or link).")
+                else:
+                    base_state = AgentState(
+                        path_to_cv=cv_path,
+                        path_to_job=job_path,
+                        cv_description_text=cv_desc,
+                        job_description_text=job_desc,
+                    )
+                    # Extraction phase
+                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    extracted_state = run_extraction_flow(
+                        base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
+                    )
+                    for step in extraction_steps:
+                        step["status"] = "done"
+                    for step in evaluation_steps:
+                        step["status"] = "running"
+                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    # Evaluation phase
+                    evaluated_state = run_evaluation_flow(
+                        extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
+                    )
+                    for step in evaluation_steps:
+                        step["status"] = "done"
+                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    try:
+                        evaluated_state = AgentState.model_validate(evaluated_state)
+                    except Exception:
+                        pass
+                    st.session_state.agent_state = evaluated_state
+                    st.session_state.rewrite_state = None
+                    st.session_state.docx_path = None
+                    add_message("assistant", "Match assessment complete")
+                    st.rerun()
+            finally:
+                st.session_state.assessment_running = False
 
     if "agent_state" in st.session_state:
-        render_evaluation_results(st.session_state.agent_state)
-        render_rewrite_section(st.session_state.agent_state, llm)
+        with col_main:
+            render_evaluation_results(st.session_state.agent_state)
+            render_rewrite_section(st.session_state.agent_state, llm)
 
 
 if __name__ == "__main__":

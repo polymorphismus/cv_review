@@ -33,9 +33,6 @@ Candidate: ["Python 3.x", "PostgreSQL", "AWS Lambda"]
 Match: Python (exact: 100%), SQL→PostgreSQL (semantic: 90%), AWS (exact: 100%)
 Score: 97/100
 """
-
-# ============================================================================
-#todo
 QUALIFICATION_MATCH_PROMPT="""
 You are a strict ATS (Applicant Tracking System) Analyst. 
 You specialize in matching education and qualifications between cv and job positions.
@@ -362,31 +359,31 @@ Make the final hiring decision using this weighted score AS A STARTING POINT, bu
 
 **Decision Framework:**
 
-**STRONG_MATCH (85-100):**
+**Strong Match (85-100):**
 - All or nearly all critical requirements met
 - No major red flags (or easily addressable gaps)
 - Strong indicators of success in role
 - **Action: Immediate interview / Fast-track**
 
-**GOOD_MATCH (70-84):**
+**Good Match (70-84):**
 - Most requirements met with minor gaps
 - 1-2 red flags but not dealbreakers
 - Solid potential for success
 - **Action: Standard interview process**
 
-**PARTIAL_MATCH (55-69):**
+**Partial Match (55-69):**
 - Partial fit with significant gaps
 - Multiple concerns or red flags
 - Could work if other factors are exceptional
 - **Action: Consider if pipeline is thin, or if one dimension is exceptionally strong**
 
-**WEAK_MATCH (40-54):**
+**Weak Match (40-54):**
 - Major gaps in critical areas
 - Several red flags
 - Would need significant upskilling
 - **Action: Reject unless exceptional circumstances**
 
-**POOR_MATCH (0-39):**
+**Poor Match (0-39):**
 - Fundamental mismatch
 - Does not meet basic requirements
 - **Action: Auto-reject**
@@ -436,7 +433,7 @@ Make the final hiring decision using this weighted score AS A STARTING POINT, bu
 - If the role has specific critical requirements (certification, domain, etc.), those should override the weighted average.
 
 **Important Perspective Shift:**
-- The decision labels (STRONG_MATCH, GOOD_MATCH, etc.) represent the candidate’s competitiveness, NOT an employer action.
+- The decision labels (Strong Match, Good Match, etc.) represent the candidate’s competitiveness, NOT an employer action.
 - NEVER recommend interviews, screenings, fast-tracking, or rejection.
 - Frame all conclusions as advice to the candidate.
 

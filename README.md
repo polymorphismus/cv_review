@@ -184,3 +184,7 @@ high-level design.
 This repository focuses on: - multi-agent orchestration logic -
 decision-driven CV alignment - explainable AI evaluation - safe
 controlled rewriting
+
+For an interactive experience, you can also run the Streamlit app in
+`cv_agent/app.py` to upload/paste a CV and job description, assess the
+match, and optionally rewrite/download the CV.
