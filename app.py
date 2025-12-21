@@ -5,7 +5,7 @@ from uuid import uuid4
 from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
-c
+
 from consts import MODEL_NAME
 from langchain_openai import ChatOpenAI
 
@@ -162,7 +162,7 @@ def render_evaluation_results(state: AgentState):
             continue
         score = _get(result, "score", 0)
         reasoning = _get(result, "reasoning", "")
-        with st.expander(f"{title}: show details"):
+        with st.expander(f"{title}: Show details"):
             st.markdown(reasoning)
             red_flags = _get(result, "red_flags", [])
             if red_flags:

@@ -188,3 +188,16 @@ controlled rewriting
 For an interactive experience, you can also run the Streamlit app in
 `cv_agent/app.py` to upload/paste a CV and job description, assess the
 match, and optionally rewrite/download the CV.
+
+## Streamlit App (screens)
+
+- Run `streamlit run cv_agent/app.py`
+1. Submit your CV and the target job for assesment
+![Loading](screens_to_demo/loading_info.png)
+2. Recieve assesment on the match with detailed information and recomendations
+![Results](screens_to_demo/results_suggestion.png)
+3. Get your CV rewritten using target job language and Applicant Tracking System recomendations and formatting
+![Rewrite](screens_to_demo/cv_rewrite.png)
+4. Update CV accroding to your tasste if needed
+![Feedback](screens_to_demo/feedback.png)
+5. Download updated CV in docx format
