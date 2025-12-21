@@ -6,10 +6,6 @@ class Skill(BaseModel):
     name: str = Field(
         description="Skill name, e.g. 'Python', 'Project Management', 'Excel', 'Patient Care'"
     )
-    category: Optional[str] = Field(
-        default=None,
-        description="Flexible category based on domain, e.g. 'Programming', 'Marketing', 'Clinical', 'Financial Analysis'"
-    )
     proficiency: Optional[str] = Field(
         default=None,
         description="Proficiency level: 'basic', 'intermediate', 'advanced', 'expert'"
@@ -24,22 +20,24 @@ class Skill(BaseModel):
     )
     priority: Optional[str] = Field(
         default=None,
-        description="For job requirements: 'must_have', 'strongly_preferred', 'nice_to_have'"
+        description="For job requirements only (JD extraction). Do NOT infer priority from CVs."
+
     )
 
 
 class CVExperience(BaseModel):
     """General experience"""
     title: str = Field(
-        description="Job title or role name, e.g. 'Data Scientist', 'ML Engineer'."
+    description="Core job title only, excluding team, location, or employment qualifiers."
     )
+
     company: Optional[str] = Field(
         default=None,
         description="Company or organization name."
     )
     domain: Optional[str] = Field(
         default=None,
-        description="Industry or application domain of this role, e.g. healthcare, fintech, e-commerce."
+        description="Industry or application domain of this role, e.g. healthcare, fintech, e-commerce. Extract only if explicitly stated or clearly implied by the role or company description. Do NOT infer if unclear."
     )
     start_date: Optional[str] = Field(
         default=None,
@@ -65,7 +63,7 @@ class CVExperience(BaseModel):
 
     seniority_level: Optional[str] = Field(
         default=None,
-        description="Required level of seniority of the experience"
+        description="Seniority level stated in the job title or description (e.g. Junior, Senior, Lead). Do NOT infer if not explicit."
 
     )
 
@@ -88,13 +86,24 @@ class CVProject(BaseModel):
         default=None,
         description="Job place or education that the project was done."
     )
+    responsibilities: List[str] = Field(
+        default_factory=list,
+        description="List of main responsibilities listed for this project."
+    )
+    
+    quantifiable_achievements: List[str] = Field(
+        default_factory=list,
+        description="Measurable achievements with numbers/percentages, e.g. 'Reduced latency by 40%'"
+    )
+
+
 
 
 class CVEducation(BaseModel):
     """Education matching"""
     certification: Optional[str] = Field(
         default=None,
-        description="Achived certification like BSc, MSc, Bootcamp certificate, graduate"
+        description="Degree or credential name (e.g. BSc, MSc, Bootcamp, Diploma)"
     )
     field: Optional[str] = Field(
         default=None,
@@ -102,7 +111,7 @@ class CVEducation(BaseModel):
     )
     institution: Optional[str] = Field(
         default=None,
-        description="University, school, or training provider name."
+        description="University, school, or training provider name, can be abbreviation"
     )
     graduation_year: Optional[str] = Field(
         default=None,
@@ -123,7 +132,7 @@ class CVDescription(BaseModel):
     )
     current_title: Optional[str] = Field(
         default=None,
-        description="Current or most recent job title."
+        description="Most recent core job title, excluding company, location, or qualifiers."
     )
 
     total_years_experience: Optional[float] = Field(
@@ -175,7 +184,7 @@ class CVDescription(BaseModel):
 class JobDescription(BaseModel):
     """Extracting valuable fields from job description"""
     job_title: str = Field(
-        description="Title of the open position."
+    description="Core role title only (e.g. 'Data Scientist', 'Backend Engineer'), excluding location, employment type, or work mode."
     )
     company: Optional[str] = Field(
         default=None,
@@ -189,7 +198,12 @@ class JobDescription(BaseModel):
  
     required_domains: List[str] = Field(
         default_factory=list,
-        description="Domains or industries required for the role."
+        description=(
+        "Industry or functional domains explicitly required for the role "
+        "(e.g. fintech, healthcare, product analytics, growth analytics). "
+        "Extract only if clearly stated or strongly implied by responsibilities or requirements."
+    )
+
     )
     required_technical_skills: List[Skill] = Field(
         default_factory=list,

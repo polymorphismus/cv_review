@@ -7,12 +7,12 @@ from extracting_data.extracting_consts import JOB_DESCRIPTION, CV
 def access_data(state: AgentState, llm):
     """Read CV and job description documents"""
     if state.path_to_cv is not None:
-        cv_description_text = ReadDocuments(doc_input = state.path_to_cv, document_topic=CV).full_desciption_text
+        cv_description_text = ReadDocuments(doc_input = state.path_to_cv, llm=llm, document_topic=CV).full_desciption_text
     else:
         cv_description_text = ReadDocuments(document_topic=CV).full_desciption_text
     
     if state.path_to_job is not None:
-        job_description_text = ReadDocuments(doc_input = state.path_to_job, document_topic=JOB_DESCRIPTION).full_desciption_text
+        job_description_text = ReadDocuments(doc_input = state.path_to_job, llm=llm, document_topic=JOB_DESCRIPTION).full_desciption_text
     else:
         job_description_text = ReadDocuments(document_topic=JOB_DESCRIPTION).full_desciption_text
     return {

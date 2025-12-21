@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 from pypdf import PdfReader
 from docx import Document
 import textract
+from consts import MODEL_NAME
 from extracting_data.extracting_consts import JOB_DESCRIPTION, INPUT_ATTEMPTS
 from extracting_data.extracting_prompts import EXTRACTION_PROMPT
 import requests
@@ -71,16 +72,16 @@ def is_path_string(s):
 
 
 class ReadDocuments:
-    def __init__(self, doc_input=None, document_topic=JOB_DESCRIPTION, init_pipeline=True):
+    def __init__(self, doc_input=None, document_topic=JOB_DESCRIPTION, llm=None, init_pipeline=True):
         self.document_topic = document_topic
-        self.llm = None
+        self.llm = llm
         self.full_desciption_text = None
         self.doc_input = doc_input
         if init_pipeline:
             self.pipeline()
     
     def init_llm(self):
-        self.llm = ChatOpenAI(model="openai/gpt-oss-120b", temperature=0, api_key=os.environ["NEBIUS_API_KEY"], base_url=os.environ["NEBIUS_BASE_URL"]) 
+        self.llm = ChatOpenAI(model=MODEL_NAME, temperature=0, api_key=os.environ["NEBIUS_API_KEY"], base_url=os.environ["NEBIUS_BASE_URL"]) 
         
     def init_doc_input(self):
         self.doc_input = input(f'Please enter {self.document_topic} data or provide path to file containing it\n')
@@ -118,15 +119,9 @@ class ReadDocuments:
             self.full_desciption_text = self.extract_text()
             attmepts_count += 1
         if self.full_desciption_text is not None:
-            self.init_llm()
+            if self.llm is None:
+                self.init_llm()
             result = self.llm.invoke(EXTRACTION_PROMPT.format(topic=self.document_topic, text=self.full_desciption_text))
             self.full_desciption_text = result.content
         else:
             print(f'Failed to get the text for {self.document_topic}. See you next time')
-
-if __name__ == '__main__':
-    cv_path = '/Users/lisapolotskaia/Downloads/lisa_polotckaia_cv.pdf'
-    job_description_path = '/Users/lisapolotskaia/Downloads/job_description_ds.txt'
-
-    docs = ReadDocuments(doc_input=job_description_path)
-    print(docs.full_desciption_text)

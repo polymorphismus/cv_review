@@ -30,9 +30,9 @@ def qualification_match_agent_sync(state: AgentState, llm) -> QualificationMatch
     cv_education = state.cv.education
     cv_certifications = state.cv.certifications
     cv_projects = state.cv.projects
-    
+    technical_skills = state.cv.technical_skills
     education_formatted = [
-        f"{e.certification} in {e.field} from {e.institution} ({e.graduation_year})" 
+        f"{e.field} from {e.institution}, finished in ({e.graduation_year})" 
         for e in cv_education
     ]
     
@@ -50,7 +50,8 @@ def qualification_match_agent_sync(state: AgentState, llm) -> QualificationMatch
             education_formatted=education_formatted,
             cv_certifications=cv_certifications,
             total_years_experience=state.cv.total_years_experience,
-            projects_formatted=projects_formatted
+            projects_formatted=projects_formatted,
+            technical_skills=technical_skills
         )
     )
     return {"qualification_match": result}  
@@ -195,16 +196,13 @@ def scoring_agent_sync(state: AgentState, llm):
         'domain_match': state.weighting_strategy.domain_match,
     }
     
-    # Calculate weighted score
     weighted_score = sum(weights[k] * getattr(state, k).score for k in weights)
     
-    # Create score breakdown explanation
     score_breakdown = "\n".join([
         f"  {k}: {getattr(state, k).score:.1f} × {weights[k]:.2f} = {getattr(state, k).score * weights[k]:.1f}"
         for k in weights
     ])
     
-    # Compile all red flags
     all_red_flags_list = []
     for dimension in ['skills_match', 'keyword_match', 'requirements_coverage', 
                       'seniority_match', 'qualification_match',

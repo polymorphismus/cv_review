@@ -8,7 +8,7 @@ class CVRewriteState(BaseModel):
     # Original content
     original_cv: CVDescription = Field(description="Complete original CV data")
     target_job: JobDescription = Field(description="Target job description")
-    
+    original_cv_text: str = Field(description='original text extracted from cv')
     # Critical matching results
     matched_skills: List[str] = Field(description="Skills candidate has that JD requires")
     partial_skill_matches: List[str] = Field(description="Related skills that should be reworded")

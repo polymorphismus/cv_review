@@ -33,6 +33,25 @@ def render_experience(experiences):
 
     return "\n".join(blocks).strip()
 
+def render_education(education_list):
+    lines = []
+    for e in education_list:
+        parts = []
+        if e.certification:
+            parts.append(e.certification)
+        if e.field:
+            parts.append(f"in {e.field}")
+        if e.institution:
+            parts.append(e.institution)
+        if e.graduation_year:
+            parts.append(f"({e.graduation_year})")
+
+        if parts:
+            lines.append(" ".join(parts))
+
+    return "\n".join(lines)
+
+
 def add_runs_with_formatting(paragraph, text):
         """
         Handles **bold** and *italic* inline formatting.
@@ -63,6 +82,7 @@ def prompt_user_to_cv_rewrite(state: AgentState,):
             continue_decision = input('Please answer "yes" or "no", to answer whether you want to update your CV to match profile better?\n')   
 
 def prompt_user_satisfaction(state: CVRewriteState):
+    print(state.updated_cv_text)
     user_satisfaction = input('Would you like to change anything in the created CV? Answer yes or no\n')
     answered_understood = False
     while answered_understood == False:
@@ -90,6 +110,7 @@ def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
         original_cv_folder_path = "/".join(state.path_to_cv.split('/')[:-1]),
         original_cv=state.cv,
         target_job=state.job,
+        original_cv_text=state.cv_description_text,
         
         # Skills optimization
         matched_skills=state.skills_match.matched_items,
@@ -113,11 +134,10 @@ def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
         title_alignment=state.seniority_match.title_alignment,
         
         # Strategic priorities
-        top_strengths=state.final_scoring.strengths[:5],  # Top 5 only
-        key_weaknesses=state.final_scoring.weaknesses[:3],  # Top 3 only
+        top_strengths=state.final_scoring.strengths[:5],  
+        key_weaknesses=state.final_scoring.weaknesses[:3], 
         red_flags=state.all_red_flags,
         
-        # Keyword optimization
         keyword_frequency_targets=state.keyword_match.keyword_frequency,
         focus_areas=state.final_scoring.focus_areas or []
     )
@@ -127,13 +147,14 @@ def rewrite_cv_initial(state: CVRewriteState, llm):
     updating_cv_prompt = MAIN_UPDATE_CV_PROMPT.format(
         full_name=state.original_cv.full_name,
         current_title=state.original_cv.current_title,
+        original_cv_text = state.original_cv_text,
         total_years_experience=state.original_cv.total_years_experience,
         cv_domains=", ".join(state.original_cv.domains),
         technical_skills="\n".join(f"- {s.name}" for s in state.original_cv.technical_skills),
         soft_skills="\n".join(f"- {s.name}" for s in state.original_cv.soft_skills),
         experience_history=render_experience(state.original_cv.experience),
         projects="\n".join(p.name for p in state.original_cv.projects),
-        education="\n".join(f"{e.certification} in {e.field}" for e in state.original_cv.education),
+        education=render_education(state.original_cv.education),
         certifications="\n".join(state.original_cv.certifications),
         languages="\n".join(state.original_cv.spoken_languages),
 
@@ -144,7 +165,7 @@ def rewrite_cv_initial(state: CVRewriteState, llm):
         required_domains=", ".join(state.target_job.required_domains),
         job_responsibilities="\n".join(state.target_job.responsibilities),
         job_required_skills="\n".join([skill.name for skill in  state.target_job.required_technical_skills]),
-        job_nice_to_have_skills="\n".join(state.target_job.nice_to_have_skills),
+        job_nice_to_have_skills="\n".join([skill.name for skill in state.target_job.nice_to_have_skills]),
         job_critical_keywords="\n".join(state.target_job.critical_keywords),
         job_role_summary=state.target_job.role_summary,
 
@@ -211,8 +232,8 @@ def rewrite_cv_with_feedback(state: CVRewriteState, llm):
 
 def markdown_to_docx(state: CVRewriteState, llm) -> None:
     doc = Document()
+    print(state.updated_cv_text)
     markdown_text = state.updated_cv_text
-    # ---- Global style ----
     normal_style = doc.styles["Normal"]
     normal_style.font.name =SAVING_FONT
     normal_style.font.size = Pt(11)
@@ -244,20 +265,17 @@ def markdown_to_docx(state: CVRewriteState, llm) -> None:
             run.font.size = Pt(14)
             run.bold = True
 
-        # ---- Bullet list ----
         elif line.startswith("- ") or line.startswith("* "):
             p = doc.add_paragraph(style="List Bullet")
             add_runs_with_formatting(p, line[2:])
 
-        # ---- Numbered list ----
         elif re.match(r"\d+\.\s+", line):
             p = doc.add_paragraph(style="List Number")
             content = re.sub(r"^\d+\.\s+", "", line)
             add_runs_with_formatting(p, content)
 
-        # ---- Empty line ----
         elif line == "":
-            doc.add_paragraph("")
+            continue
 
         # ---- Normal paragraph ----
         else:

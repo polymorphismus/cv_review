@@ -1,6 +1,7 @@
 from trustcall import create_extractor
 from typing import Type
 from pydantic import BaseModel
+from extracting_data.extracting_prompts import SYSTEM_INSTRUCTIONS
 
 
 def trustcall_extract_text_to_schema(
@@ -32,11 +33,7 @@ def trustcall_extract_text_to_schema(
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                    "Extract the structured information strictly using the tool. "
-                    "You MUST call the tool. Do NOT output JSON directly."
-                    "If a field is missing, return null or an empty list."
-                    ),
+                    "content": SYSTEM_INSTRUCTIONS,
                 },
                 {
                     "role": "user",
