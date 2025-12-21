@@ -6,15 +6,10 @@ from langchain_core.runnables.config import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from dotenv import load_dotenv
 load_dotenv() 
-#todo check certifications and languages prompt on editing
-#todo     Advice on continuing still sucks
+
 
 if __name__ == "__main__":
     llm = ChatOpenAI(model=MODEL_NAME, temperature=0, api_key=os.environ["NEBIUS_API_KEY"], base_url=os.environ["NEBIUS_BASE_URL"]) 
     graph = build_graph(llm)
-    # result = graph.invoke({}, config=RunnableConfig(checkpointer=MemorySaver()))
-    cv_path = '/Users/lisapolotskaia/Downloads/CV Evgenii Goloborodko 2025 SLAC.pdf'
-    job_description_path = '/Users/lisapolotskaia/Downloads/cae.txt'
-    result = graph.invoke({'path_to_cv': cv_path, 
-                            'path_to_job': job_description_path}, config=RunnableConfig(checkpointer=MemorySaver()))
+    result = graph.invoke({}, config=RunnableConfig(checkpointer=MemorySaver()))
     print('Done')
