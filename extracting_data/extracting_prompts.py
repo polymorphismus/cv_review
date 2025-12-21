@@ -38,10 +38,6 @@ FORMATTING REQUIREMENTS:
 - Keep section headers in title case (capitalize the first letter of each major word).
 - Remove any artifacts from PDF extraction (such as stray characters or formatting marks).
 
-EDUCATION RULES:
-- If an education entry contains a date range (e.g. "2008 – 2013"):
-  - Treat the end year as graduation_year.
-- Do NOT infer graduation_year if no year or range is present.
 
 OUTPUT FORMAT:
 Return the extracted content in a clean, readable format with:
@@ -115,6 +111,10 @@ JD (when schema is JobDescription or related models) DOMAIN RULES:
 FORMATTING RULES (ADD):
 - Treat bullet symbols such as "•" the same as "-" for list extraction.
 
+EDUCATION RULES:
+- If an education entry contains a date range (e.g. "2008 – 2013"):
+  - Treat the end year as graduation_year.
+- Do NOT infer graduation_year if no year or range is present.
 
 """
 

@@ -304,34 +304,29 @@ If feedback conflicts with ATS optimization, FOLLOW USER FEEDBACK.
 EDITING RULES
 USER FEEDBACK OVERRIDES EVERYTHING EXCEPT FACTS
 
-Implement all valid feedback requests
-
-Interpret intent carefully (tone, emphasis, removals, wording)
+* Implement all valid feedback requests
+* Interpret intent carefully (tone, emphasis, removals, wording)
 
 SURGICAL CHANGES ONLY
 
-Modify only the sections affected by feedback
-
-Do NOT rewrite untouched sections
-
-Do NOT change structure unless asked
+* Modify only the sections affected by feedback
+* Do NOT rewrite untouched sections
+* Do NOT change structure unless asked
 
 FACTUAL ACCURACY
 
-Every retained or edited statement must be traceable to the original CV
+* Every retained or edited statement must be traceable to the original CV
+* You cannot extend abbreviations unless you're 99% sure that the extension is correct
 
 If feedback requests something factually invalid:
-
-Do NOT add it
-
-Adjust as close as possible without lying
+* Do NOT add it
+* Adjust as close as possible without lying
 
 TRANSPARENCY RULE
-If any feedback request cannot be fulfilled as written:
+* If any feedback request cannot be fulfilled as written:
 
 Leave the CV factual
-
-Add a short note AFTER the CV explaining what could not be done and why
+* Add a short note AFTER the CV explaining what could not be done and why
 
 ====================
 OUTPUT
