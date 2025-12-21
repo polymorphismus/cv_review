@@ -25,12 +25,14 @@ def access_data(state: AgentState, llm):
     }
 
 def extract_job_to_profile(state: AgentState, llm):
+    print('Extracting job information...')
     """Extract job description to structured format"""
     result = trustcall_extract_text_to_schema(state.job_description_text, JobDescription, llm)
     return {'job': result}
     
 def extract_cv_to_profile(state: AgentState, llm):
     """Extract CV to structured format"""
+    print('Extracting CV information...')
     result = trustcall_extract_text_to_schema(state.cv_description_text, CVDescription, llm)
     return {'cv': result}
 

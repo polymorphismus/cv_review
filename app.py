@@ -138,13 +138,20 @@ def render_evaluation_results(state: AgentState):
 def render_rewrite_section(agent_state: AgentState, llm):
     st.subheader("Rewrite CV")
     rewrite_state = st.session_state.get("rewrite_state")
+    if st.session_state.get("rewrite_running"):
+        st.info("CV rewrite in progress...")
 
     if rewrite_state is None:
         if st.button("Rewrite my CV to fit this job"):
-            rewrite_state = create_rewrite_state(agent_state, llm)
-            updates = rewrite_cv_initial(rewrite_state, llm)
-            rewrite_state = rewrite_state.model_copy(update=updates)
-            st.session_state.rewrite_state = rewrite_state
+            st.session_state.rewrite_running = True
+            try:
+                with st.spinner("Generating rewritten CV..."):
+                    rewrite_state = create_rewrite_state(agent_state, llm)
+                    updates = rewrite_cv_initial(rewrite_state, llm)
+                    rewrite_state = rewrite_state.model_copy(update=updates)
+                    st.session_state.rewrite_state = rewrite_state
+            finally:
+                st.session_state.rewrite_running = False
             add_message("assistant", "Here's a rewritten CV draft in Markdown.")
             st.rerun()
         return
@@ -161,18 +168,24 @@ def render_rewrite_section(agent_state: AgentState, llm):
             if not feedback.strip():
                 st.warning("Please add feedback before applying changes.")
             else:
-                rewrite_state.user_feedback = feedback.strip()
-                updates = rewrite_cv_with_feedback(rewrite_state, llm)
-                rewrite_state = rewrite_state.model_copy(update=updates)
-                st.session_state.rewrite_state = rewrite_state
+                st.session_state.rewrite_running = True
+                try:
+                    with st.spinner("Updating CV with feedback..."):
+                        rewrite_state.user_feedback = feedback.strip()
+                        updates = rewrite_cv_with_feedback(rewrite_state, llm)
+                        rewrite_state = rewrite_state.model_copy(update=updates)
+                        st.session_state.rewrite_state = rewrite_state
+                finally:
+                    st.session_state.rewrite_running = False
                 add_message("assistant", "Updated the CV based on your feedback.")
                 st.rerun()
     else:
         st.info("Feedback limit reached.")
 
     if st.button("Finalize and prepare DOCX"):
-        doc_info = markdown_to_docx(rewrite_state, llm)
-        st.session_state.docx_path = doc_info.get("docx_path")
+        with st.spinner("Preparing DOCX..."):
+            doc_info = markdown_to_docx(rewrite_state, llm)
+            st.session_state.docx_path = doc_info.get("docx_path")
         add_message("assistant", "Your updated CV is ready to download.")
         st.rerun()
 
@@ -196,53 +209,72 @@ def main():
                 "content": "Provide your CV and the target job description. You can paste text, upload a file, or share a link.",
             }
         ]
+    if "assessment_running" not in st.session_state:
+        st.session_state.assessment_running = False
+    if "rewrite_running" not in st.session_state:
+        st.session_state.rewrite_running = False
 
     llm = init_llm()
     init_graphs(llm)
     render_messages()
 
-    st.markdown("### Provide documents")
-    col_cv, col_job = st.columns(2)
-    with col_cv:
-        st.markdown("**CV**")
-        cv_text = st.text_area("Paste CV text", height=200, key="cv_text")
-        cv_upload = st.file_uploader("Upload CV file (.pdf, .docx, .txt)", key="cv_upload")
-        cv_link = st.text_input("CV link or local path", key="cv_link")
-    with col_job:
-        st.markdown("**Job description**")
-        job_text = st.text_area("Paste job description text", height=200, key="job_text")
-        job_upload = st.file_uploader("Upload job description file (.pdf, .docx, .txt)", key="job_upload")
-        job_link = st.text_input("Job link or local path", key="job_link")
+    status_placeholder = st.empty()
 
-    if st.button("Run assessment"):
-        cv_desc, cv_path = prepare_document(CV, cv_text, cv_link, cv_upload, llm)
-        job_desc, job_path = prepare_document(JOB_DESCRIPTION, job_text, job_link, job_upload, llm)
+    if st.session_state.assessment_running:
+        with status_placeholder.container():
+            st.info("Assessment is running...")
+    elif "agent_state" not in st.session_state:
+        form_placeholder = st.empty()
+        with form_placeholder.container():
+            st.markdown("### Provide documents")
+            col_cv, col_job = st.columns(2)
+            with col_cv:
+                st.markdown("**CV**")
+                cv_text = st.text_area("Paste CV text", height=200, key="cv_text")
+                cv_upload = st.file_uploader("Upload CV file (.pdf, .docx, .txt)", key="cv_upload")
+                cv_link = st.text_input("CV link or local path", key="cv_link")
+            with col_job:
+                st.markdown("**Job description**")
+                job_text = st.text_area("Paste job description text", height=200, key="job_text")
+                job_upload = st.file_uploader("Upload job description file (.pdf, .docx, .txt)", key="job_upload")
+                job_link = st.text_input("Job link or local path", key="job_link")
 
-        if not cv_desc or not job_desc:
-            st.error("Please provide both CV and job description (text, file, or link).")
-        else:
-            add_message("assistant", "Running extraction and evaluation...")
-            base_state = AgentState(
-                path_to_cv=cv_path,
-                path_to_job=job_path,
-                cv_description_text=cv_desc,
-                job_description_text=job_desc,
-            )
-            extracted_state = run_extraction_flow(
-                base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
-            )
-            evaluated_state = run_evaluation_flow(
-                extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
-            )
-            try:
-                evaluated_state = AgentState.model_validate(evaluated_state)
-            except Exception:
-                pass
-            st.session_state.agent_state = evaluated_state
-            st.session_state.rewrite_state = None
-            st.session_state.docx_path = None
-            add_message("assistant", "Assessment complete. See details below.")
-            st.rerun()
+            if st.button("Run assessment"):
+                st.session_state.assessment_running = True
+                form_placeholder.empty()
+                add_message("assistant", "Running extraction and evaluation...")
+                with status_placeholder.container():
+                    with st.spinner("Running assessment..."):
+                        try:
+                            cv_desc, cv_path = prepare_document(CV, cv_text, cv_link, cv_upload, llm)
+                            job_desc, job_path = prepare_document(JOB_DESCRIPTION, job_text, job_link, job_upload, llm)
+
+                            if not cv_desc or not job_desc:
+                                st.error("Please provide both CV and job description (text, file, or link).")
+                            else:
+                                base_state = AgentState(
+                                    path_to_cv=cv_path,
+                                    path_to_job=job_path,
+                                    cv_description_text=cv_desc,
+                                    job_description_text=job_desc,
+                                )
+                                extracted_state = run_extraction_flow(
+                                    base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
+                                )
+                                evaluated_state = run_evaluation_flow(
+                                    extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
+                                )
+                                try:
+                                    evaluated_state = AgentState.model_validate(evaluated_state)
+                                except Exception:
+                                    pass
+                                st.session_state.agent_state = evaluated_state
+                                st.session_state.rewrite_state = None
+                                st.session_state.docx_path = None
+                                add_message("assistant", "Assessment complete. See details below.")
+                                st.rerun()
+                        finally:
+                            st.session_state.assessment_running = False
 
     if "agent_state" in st.session_state:
         render_evaluation_results(st.session_state.agent_state)

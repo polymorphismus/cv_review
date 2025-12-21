@@ -12,4 +12,3 @@ if __name__ == "__main__":
     llm = ChatOpenAI(model=MODEL_NAME, temperature=0, api_key=os.environ["NEBIUS_API_KEY"], base_url=os.environ["NEBIUS_BASE_URL"]) 
     graph = build_graph(llm)
     result = graph.invoke({}, config=RunnableConfig(checkpointer=MemorySaver()))
-    print('Done')
