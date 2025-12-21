@@ -162,7 +162,7 @@ def render_evaluation_results(state: AgentState):
             continue
         score = _get(result, "score", 0)
         reasoning = _get(result, "reasoning", "")
-        with st.expander(f"{title}: Show details"):
+        with st.expander(f"{title}"):
             st.markdown(reasoning)
             red_flags = _get(result, "red_flags", [])
             if red_flags:
@@ -335,6 +335,8 @@ def main():
     for key in ["cv_text", "job_text", "cv_link_cached", "job_link_cached", "path_to_cv", "path_to_job"]:
         if key not in st.session_state:
             st.session_state[key] = ""
+    if "assessment_button_hidden" not in st.session_state:
+        st.session_state.assessment_button_hidden = False
 
     def reset_inputs(clear_cv: bool, clear_job: bool, reset_messages: bool = False):
         if clear_cv:
@@ -352,6 +354,7 @@ def main():
         for key in ["agent_state", "rewrite_state", "docx_path", "docx_ready", "docx_downloaded", "download_requested"]:
             st.session_state.pop(key, None)
         st.session_state.assessment_running = False
+        st.session_state.assessment_button_hidden = False
         if reset_messages:
             st.session_state.messages = [INITIAL_MESSAGE.copy()]
         st.rerun()
