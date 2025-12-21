@@ -82,6 +82,7 @@ def prompt_user_to_cv_rewrite(state: AgentState,):
             continue_decision = input('Please answer "yes" or "no", to answer whether you want to update your CV to match profile better?\n')   
 
 def prompt_user_satisfaction(state: CVRewriteState):
+    print('\nThis is the new version of your CV:')
     print(state.updated_cv_text)
     user_satisfaction = input('Would you like to change anything in the created CV? Answer yes or no\n')
     answered_understood = False
@@ -96,7 +97,7 @@ def prompt_user_satisfaction(state: CVRewriteState):
             user_satisfaction = input('Please answer "yes" or "no", to answer whether you want to continue to updating your CV to match profile better?\n')   
 
 def receive_user_feedback(state: CVRewriteState, llm):
-    input = ('Please share your thoughts on what needs to be changed')
+    input = input('\'nPlease share your thoughts on what needs to be changed\n')
     return {'user_feedback' : input}
     
 
