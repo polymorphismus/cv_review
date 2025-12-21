@@ -9,3 +9,4 @@ langchain-openai
 langgraph
 trustcall
 python-dotenv
+streamlit

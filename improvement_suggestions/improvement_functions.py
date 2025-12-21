@@ -7,6 +7,7 @@ import os
 from docx import Document
 from docx.shared import Pt
 import re
+from pathlib import Path
 
 
 def render_experience(experiences):
@@ -106,9 +107,13 @@ def create_rewrite_state(state: AgentState, llm) -> CVRewriteState:
     Extract only the essential information needed for CV rewriting.
     This reduces token usage and focuses the LLM on relevant data.
     """
+    original_folder = "/".join(state.path_to_cv.split('/')[:-1]) if state.path_to_cv else str((Path.cwd() / "outputs").resolve())
+    output_dir = original_folder
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     return CVRewriteState(
         # Core documents
-        original_cv_folder_path = "/".join(state.path_to_cv.split('/')[:-1]),
+        original_cv_folder_path = original_folder,
+        output_dir=output_dir,
         original_cv=state.cv,
         target_job=state.job,
         original_cv_text=state.cv_description_text,
@@ -233,7 +238,6 @@ def rewrite_cv_with_feedback(state: CVRewriteState, llm):
 
 def markdown_to_docx(state: CVRewriteState, llm) -> None:
     doc = Document()
-    print(state.updated_cv_text)
     markdown_text = state.updated_cv_text
     normal_style = doc.styles["Normal"]
     normal_style.font.name =SAVING_FONT
@@ -283,5 +287,8 @@ def markdown_to_docx(state: CVRewriteState, llm) -> None:
             p = doc.add_paragraph()
             add_runs_with_formatting(p, line)
 
-    doc.save(os.path.join(state.original_cv_folder_path, UPDATED_CV_NAME))
-    return {}
+    output_dir = state.output_dir or state.original_cv_folder_path
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    save_path = os.path.join(output_dir, UPDATED_CV_NAME)
+    doc.save(save_path)
+    return {"docx_path": save_path}

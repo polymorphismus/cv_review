@@ -208,7 +208,7 @@ def scoring_agent_sync(state: AgentState, llm):
                       'seniority_match', 'qualification_match',
                       'recency_relevance', 'domain_match']:
         all_red_flags_list.extend(getattr(state, dimension).red_flags)
-    
+
     result = llm.with_structured_output(FinalScoringResult, method="json_mode").invoke(
         SCORING_PROMPT.format(
             job_title=state.job.job_title,
@@ -271,12 +271,6 @@ def scoring_agent_sync(state: AgentState, llm):
             score_breakdown=score_breakdown,
         )
     )
-    formatted_focus_areas = "\n * " + "\n * ".join(result.focus_areas)
-    print("\n"* 5)
-    print(f"""Weighted score: {weighted_score}
-    Areas that you need to work on in order to natually become a better candidate for this poition:
-    {formatted_focus_areas}
-    Advice on continuing: {result.recommendation}""")
     return {
         "decision": result.decision,
         "recommendation": result.recommendation,
@@ -285,4 +279,6 @@ def scoring_agent_sync(state: AgentState, llm):
         "all_red_flags": all_red_flags_list,
         "weaknesses": result.weaknesses,
         "strengths": result.strengths,
+        "weighted_score": weighted_score,
+        "score_breakdown": score_breakdown,
     }

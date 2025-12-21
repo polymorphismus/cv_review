@@ -5,6 +5,7 @@ from extracting_data.description_schemas import CVDescription, JobDescription
 class CVRewriteState(BaseModel):
     """Streamlined state containing only information needed for CV rewriting"""
     original_cv_folder_path: str = Field(description="Path to the folder containing original cv")
+    output_dir: Optional[str] = Field(default=None, description="Folder to save generated artifacts (docx)")
     # Original content
     original_cv: CVDescription = Field(description="Complete original CV data")
     target_job: JobDescription = Field(description="Target job description")

@@ -29,3 +29,5 @@ class AgentState(BaseModel):
     all_red_flags: List[str] = None
     weaknesses: List[str] = None
     strengths: List[str] = None
+    weighted_score: Optional[float] = None
+    score_breakdown: Optional[str] = None
