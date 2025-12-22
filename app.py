@@ -397,15 +397,23 @@ def main():
             if st.button("New assessment", use_container_width=True, key="btn_new_assessment"):
                 reset_for_new_assessment()
             st.divider()
-            st.markdown("**Messages**")
             st.markdown('<div class="scroll-messages">', unsafe_allow_html=True)
             render_messages()
             st.markdown("</div>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-    if st.session_state.assessment_running:
-        pass
-    elif not st.session_state.get("agent_state"):
+    # If results exist, make sure any running flag is cleared so status banners vanish
+    if st.session_state.get("agent_state") and st.session_state.assessment_running:
+        st.session_state.assessment_running = False
+        st.session_state.assessment_button_hidden = False
+
+    show_form = (
+        not st.session_state.assessment_running
+        and not st.session_state.get("agent_state")
+        and not st.session_state.assessment_button_hidden
+    )
+
+    if show_form:
         form_placeholder = col_main.empty()
         with form_placeholder.container():
             st.markdown("### Provide documents")
@@ -428,10 +436,13 @@ def main():
                     value=st.session_state.get("job_link_cached", ""),
                     key="job_link_input",
                 )
+            run_btn_placeholder = st.empty()
 
-        if st.button("Run match assessment"):
+        if run_btn_placeholder.button("Run match assessment"):
             st.session_state.assessment_running = True
+            st.session_state.assessment_button_hidden = True
             form_placeholder.empty()
+            run_btn_placeholder.empty()
             add_message("assistant", "Running extraction and evaluation...")
             extraction_steps = [
                 {"text": "Extracting job information...", "status": "running"},
@@ -460,6 +471,8 @@ def main():
 
                 if not cv_desc or not job_desc:
                     st.error("Please provide both CV and job description (text, file, or link).")
+                    st.session_state.assessment_running = False
+                    st.session_state.assessment_button_hidden = False
                 else:
                     base_state = AgentState(
                         path_to_cv=cv_path,
@@ -467,7 +480,6 @@ def main():
                         cv_description_text=cv_desc,
                         job_description_text=job_desc,
                     )
-                    # Extraction phase
                     render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
                     extracted_state = run_extraction_flow(
                         base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
@@ -477,7 +489,6 @@ def main():
                     for step in evaluation_steps:
                         step["status"] = "running"
                     render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
-                    # Evaluation phase
                     evaluated_state = run_evaluation_flow(
                         extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
                     )
@@ -491,12 +502,20 @@ def main():
                     st.session_state.agent_state = evaluated_state
                     st.session_state.rewrite_state = None
                     st.session_state.docx_path = None
+                    st.session_state.assessment_running = False
                     add_message("assistant", "Match assessment complete")
                     st.rerun()
-            finally:
+            except Exception:
                 st.session_state.assessment_running = False
+                st.session_state.assessment_button_hidden = False
+    elif st.session_state.assessment_running and not st.session_state.get("agent_state"):
+        with col_main:
+            st.info("Running assessment...")
+    else:
+        progress_placeholder.empty()
 
     if "agent_state" in st.session_state:
+        progress_placeholder.empty()
         with col_main:
             render_evaluation_results(st.session_state.agent_state)
             render_rewrite_section(st.session_state.agent_state, llm)

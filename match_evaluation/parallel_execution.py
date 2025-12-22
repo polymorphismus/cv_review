@@ -185,7 +185,6 @@ def scoring_agent_sync(state: AgentState, llm):
     """Final scoring with dynamic weights and ATS reasoning"""
     
     print("Final scoring...")
-    # Use dynamic weights from weight generation
     weights = {
         'skills_match': state.weighting_strategy.skills_match,
         'keyword_match': state.weighting_strategy.keyword_match,

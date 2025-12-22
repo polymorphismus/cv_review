@@ -16,7 +16,6 @@ def build_evaluation_graph(llm) -> StateGraph:
     g.add_node("weight_generation", partial(weight_generation_agent_sync, llm=llm))
     g.add_node("scoring", partial(scoring_agent_sync, llm=llm))
 
-    # fan-out from START is OK
     for node in [
         "qualification_match", "skills_match", "domain_match",
         "seniority_match", "recency_relevance",

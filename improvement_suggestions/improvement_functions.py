@@ -56,20 +56,20 @@ def render_education(education_list):
 
 
 def add_runs_with_formatting(paragraph, text):
-        """
-        Handles **bold** and *italic* inline formatting.
-        """
-        tokens = re.split(r"(\*\*.*?\*\*|\*.*?\*)", text)
+    """
+    Handles **bold** and *italic* inline formatting.
+    """
+    tokens = re.split(r"(\*\*.*?\*\*|\*.*?\*)", text)
 
-        for token in tokens:
-            if token.startswith("**") and token.endswith("**"):
-                run = paragraph.add_run(token[2:-2])
-                run.bold = True
-            elif token.startswith("*") and token.endswith("*"):
-                run = paragraph.add_run(token[1:-1])
-                run.italic = True
-            else:
-                paragraph.add_run(token)
+    for token in tokens:
+        if token.startswith("**") and token.endswith("**"):
+            run = paragraph.add_run(token[2:-2])
+            run.bold = True
+        elif token.startswith("*") and token.endswith("*"):
+            run = paragraph.add_run(token[1:-1])
+            run.italic = True
+        else:
+            paragraph.add_run(token)
 
 def prompt_user_to_cv_rewrite(state: AgentState,):
     continue_decision = input('Do you want to update your CV to match profile better? Answer yes or no\n')
