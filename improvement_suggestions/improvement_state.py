@@ -80,5 +80,3 @@ class CVRewriteState(BaseModel):
 
     feedback_round: int = 0
 
-    class Config:
-        arbitrary_types_allowed = True

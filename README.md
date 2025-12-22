@@ -15,7 +15,7 @@ chain.
 
 ## Core Idea
 
-Input: - CV (PDF / DOCX / TXT) - Job description (plain text)
+Input (PDF / DOCX / TXT): - CV - Job description
 
 Output: - Match decision - Structured explanation: - what fits
 well - what is missing or weak - Recommendation: - no rewrite needed -
@@ -33,9 +33,7 @@ into independent agents.
     -   CV and job description are converted into clean, normalized
         text.
 2.  **Structured Extraction**
-    -   Both texts are converted into validated structured objects:
-        -   `CVDescription`
-        -   `JobDescription`
+    -   Both texts are converted into validated structured objects
 3.  **Parallel Evaluation (Multi-Agent)** Independent agents analyze
     different alignment dimensions at the same time:
     -   hard qualification requirements
