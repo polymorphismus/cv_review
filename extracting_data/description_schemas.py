@@ -18,11 +18,6 @@ class Skill(BaseModel):
         default=None,
         description="Where/how this skill was used, e.g. 'Used in production systems', 'Led team training'"
     )
-    priority: Optional[str] = Field(
-        default=None,
-        description="For job requirements only (JD extraction). Do NOT infer priority from CVs."
-
-    )
 
 
 class CVExperience(BaseModel):
@@ -82,10 +77,6 @@ class CVProject(BaseModel):
         default_factory=list,
         description="Technologies, frameworks, or tools used in the project."
     )
-    experience_link: Optional[str] = Field(
-        default=None,
-        description="Job place or education that the project was done."
-    )
     responsibilities: List[str] = Field(
         default_factory=list,
         description="List of main responsibilities listed for this project."
@@ -118,10 +109,6 @@ class CVEducation(BaseModel):
         description="Graduation year or completion year."
     )
 
-    is_completed: Optional[bool] = Field(
-        default=None,
-        description="True if completed, False if in progress"
-    )
 
 
 class CVDescription(BaseModel):
@@ -242,11 +229,6 @@ class JobDescription(BaseModel):
     required_certifications: List[str] = Field(
     default_factory=list,
     description="Mandatory certifications like AWS, PMP, CFA"
-    )
-
-    required_spoken_languages: List[str] = Field(
-    default_factory=list,
-    description="Required languages with optional proficiency levels"
     )
 
     required_seniority: Optional[str] = Field(
