@@ -270,6 +270,7 @@ def scoring_agent_sync(state: AgentState, llm):
             score_breakdown=score_breakdown,
         )
     )
+    print('Done with the scoring')
     return {
         "decision": result.decision,
         "recommendation": result.recommendation,

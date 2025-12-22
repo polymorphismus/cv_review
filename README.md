@@ -17,7 +17,7 @@ chain.
 
 Input: - CV (PDF / DOCX / TXT) - Job description (plain text)
 
-Output: - Match score (0--100) - Structured explanation: - what fits
+Output: - Match decision - Structured explanation: - what fits
 well - what is missing or weak - Recommendation: - no rewrite needed -
 rewrite recommended - position not relevant - Optional: - fully rebuilt
 CV aligned to the target role
@@ -142,8 +142,12 @@ match, and optionally rewrite/download the CV.
 ![Loading](screens_to_demo/loading_info.png)
 2. Recieve assesment on the match with detailed information and recomendations
 ![Results](screens_to_demo/results_suggestion.png)
+![Results](screens_to_demo/dropdown.png)
 3. Get your CV rewritten using target job language and Applicant Tracking System recomendations and formatting
 ![Rewrite](screens_to_demo/cv_rewrite.png)
-4. Update CV accroding to your tasste if needed
+4. Update CV with your feedback if needed
 ![Feedback](screens_to_demo/feedback.png)
 5. Download updated CV in docx format
+
+Notes:
+- Match results include a Strengths & gaps summary and per-section expanders. Matched/missing items and must-haves/nice-to-haves show in side-by-side columns when available; empty sections stay hidden.

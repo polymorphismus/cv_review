@@ -141,11 +141,29 @@ def render_evaluation_results(state: AgentState):
     final_scoring = _get(state, "final_scoring")
     decision = _get(final_scoring, "decision", "N/A")
     recommendation = _get(final_scoring, "recommendation", "")
+    strengths = _get(final_scoring, "strengths", []) or []
+    gaps = _get(final_scoring, "weaknesses", []) or []
 
     st.metric("Decision", decision)
 
     if recommendation:
         st.info(recommendation)
+
+    if strengths or gaps:
+        with st.expander("Strengths & gaps"):
+            col_str, col_gap = st.columns(2)
+            with col_str:
+                st.markdown("**Top strengths**")
+                if strengths:
+                    st.markdown("\n".join(f"- {item}" for item in strengths))
+                else:
+                    st.caption("No strengths listed.")
+            with col_gap:
+                st.markdown("**Gaps / risks**")
+                if gaps:
+                    st.markdown("\n".join(f"- {item}" for item in gaps))
+                else:
+                    st.caption("No gaps listed.")
 
     eval_sections = [
         ("Skills", _get(state, "skills_match")),
@@ -157,17 +175,85 @@ def render_evaluation_results(state: AgentState):
         ("Keyword match", _get(state, "keyword_match")),
     ]
 
-    for title, result in eval_sections:
+    SKIP_ALWAYS = {
+        "portfolio_boost",
+        "projects_highlight",
+        "domain_diversity",
+        "bonus_points",
+        "years_gap",
+        "technology_freshness",
+        "title_alignment",
+        "keyword_frequency",
+    }
+
+    def render_section(title: str, result, skip_extra=None):
         if result is None:
-            continue
-        score = _get(result, "score", 0)
-        reasoning = _get(result, "reasoning", "")
+            return
+        try:
+            data = result.model_dump()
+        except Exception:
+            data = result if isinstance(result, dict) else {}
+        skip_extra = skip_extra or set()
+
         with st.expander(f"{title}"):
-            st.markdown(reasoning)
-            red_flags = _get(result, "red_flags", [])
+            # Column groups for matched/missing style fields
+            column_groups = [
+                ("matched_items", "missing_items", "partial_matches", "bonus_items"),
+                ("must_have_satisfied", "must_have_missing", "nice_to_have_satisfied"),
+                ("matched_keywords", "missing_keywords"),
+            ]
+            shown_keys = set()
+            for group in column_groups:
+                present = [k for k in group if data.get(k)]
+                if not present:
+                    continue
+                shown_keys.update(present)
+                cols = st.columns(len(present))
+                for col, key in zip(cols, present):
+                    items = data.get(key) or []
+                    with col:
+                        label = key.replace("_", " ").title()
+                        st.markdown(f"**{label}**")
+                        if isinstance(items, list) and items:
+                            st.markdown("\n".join(f"- {item}" for item in items))
+                        elif isinstance(items, dict) and items:
+                            st.markdown("\n".join(f"- {k}: {v}" for k, v in items.items()))
+                        else:
+                            st.caption("None")
+
+            skip_keys = {"score", "reasoning", "red_flags"} | shown_keys | skip_extra | SKIP_ALWAYS
+            for key, val in data.items():
+                if key in skip_keys:
+                    continue
+                if val in (None, "", [], {}, ()):
+                    continue
+                label = key.replace("_", " ").title()
+                if isinstance(val, list):
+                    st.markdown(f"**{label}**")
+                    if val:
+                        st.markdown("\n".join(f"- {item}" for item in val))
+                    else:
+                        st.caption("None")
+                elif isinstance(val, dict):
+                    st.markdown(f"**{label}**")
+                    if val:
+                        st.markdown("\n".join(f"- {k}: {v}" for k, v in val.items()))
+                    else:
+                        st.caption("None")
+                else:
+                    st.markdown(f"**{label}**: {val}")
+
+            red_flags = data.get("red_flags") or []
             if red_flags:
-                if red_flags:
-                    st.warning("Red flags: " + "; ".join(red_flags))
+                st.warning("Red flags: " + "; ".join(red_flags))
+
+            reasoning_text = data.get("reasoning", "")
+            if reasoning_text:
+                st.markdown(reasoning_text)
+
+    for title, result in eval_sections:
+        extra_skip = {"coverage_percentage"} if title == "Requirements coverage" else set()
+        render_section(title, result, skip_extra=extra_skip)
 
         # After keyword match, show focus areas dropdown if available
         if title == "Keyword match":
