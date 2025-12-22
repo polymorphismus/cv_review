@@ -1,4 +1,4 @@
-SKILL_MATCH_PROMPT ="""
+SKILL_MATCH_PROMPT = """
 *Role:**
 You are a strict ATS (Applicant Tracking System) Analyst. 
 Your goal is to evaluate match between technical skills of the candidate and technical skills required for the position
@@ -33,7 +33,7 @@ Candidate: ["Python 3.x", "PostgreSQL", "AWS Lambda"]
 Match: Python (exact: 100%), SQL→PostgreSQL (semantic: 90%), AWS (exact: 100%)
 Score: 97/100
 """
-QUALIFICATION_MATCH_PROMPT="""
+QUALIFICATION_MATCH_PROMPT = """
 You are a strict ATS (Applicant Tracking System) Analyst. 
 You specialize in matching education and qualifications between cv and job positions.
 
@@ -115,8 +115,7 @@ Provide specific optimization suggestions for missing keywords.
 """
 
 
-
-SENIORITY_MATCH_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. You specialize in a seniority and experience level matching.
+SENIORITY_MATCH_PROMPT = """You are a strict ATS (Applicant Tracking System) Analyst. You specialize in a seniority and experience level matching.
 
 **Job Requirements:**
 Required Years of Experience: {required_years_experience}
@@ -145,7 +144,7 @@ Evaluate if the candidate's seniority level matches the job requirements.
 - Lead/Staff: 8-12 years
 - Principal/Architect: 12+ years"""
 
-DOMAIN_MATCH_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. You specialize in industry domain matching.
+DOMAIN_MATCH_PROMPT = """You are a strict ATS (Applicant Tracking System) Analyst. You specialize in industry domain matching.
 
 **Job Requirements:**
 Required Domains/Industries: {required_domains}
@@ -167,7 +166,7 @@ Evaluate the candidate's industry/domain experience relevance.
 
 # ============================================================================
 
-REQUIREMENTS_COVERAGE_PROMPT="""You are a strict ATS (Applicant Tracking System) Analyst. 
+REQUIREMENTS_COVERAGE_PROMPT = """You are a strict ATS (Applicant Tracking System) Analyst. 
 You specialize in job requirements verification.
 
 **Job Requirements:**
@@ -186,7 +185,7 @@ Check how many must-have and nice-to-have requirements the candidate satisfies.
 3. Nice-to-have requirements are bonus points (can push score above 100)
 4. Look for implicit satisfaction (e.g., "5 years Python" satisfies "proficient in Python")"""
 
-RECENCY_RELEVANCE_PROMPT="""You are a recency and relevance evaluation expert.
+RECENCY_RELEVANCE_PROMPT = """You are a recency and relevance evaluation expert.
 
 **Job Requirements:**
 Required Skills: {required_skills}

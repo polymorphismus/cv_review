@@ -2,6 +2,7 @@ from langgraph.graph import StateGraph, START, END
 from functools import partial
 from extracting_data.extraction_functions import *
 
+
 def build_extraction_graph(llm) -> StateGraph:
     g = StateGraph(AgentState)
     g.add_node("access_data", partial(access_data, llm=llm))
@@ -16,6 +17,7 @@ def build_extraction_graph(llm) -> StateGraph:
     g.add_edge("extract_cv_to_profile", "join_extraction")
     g.add_edge("join_extraction", END)
     return g.compile()
+
 
 def run_extraction_flow(state: AgentState, llm, extraction_graph):
     return extraction_graph.invoke(state)

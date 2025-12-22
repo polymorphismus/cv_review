@@ -1,4 +1,4 @@
-EXTRACTION_PROMPT ="""You are an expert text extraction specialist.
+EXTRACTION_PROMPT = """You are an expert text extraction specialist.
 
 TASK:
 Extract ONLY the sections and information directly relevant to {topic} from the provided text, including implicit sections that do not have explicit headers.
@@ -121,6 +121,5 @@ EDUCATION RULES:
 SYSTEM_INSTRUCTIONS = (
     "Extract the structured information strictly using the tool. "
     "You MUST call the tool. Do NOT output JSON directly. "
-    "If a field is missing, return null or an empty list.\n\n"
-    + SYSTEM_RULES
+    "If a field is missing, return null or an empty list.\n\n" + SYSTEM_RULES
 )

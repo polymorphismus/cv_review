@@ -3,11 +3,8 @@ from typing import Type
 from pydantic import BaseModel
 from extracting_data.extracting_prompts import SYSTEM_INSTRUCTIONS
 
-def trustcall_extract_text_to_schema(
-    text: str,
-    schema: Type[BaseModel],
-    llm
-):
+
+def trustcall_extract_text_to_schema(text: str, schema: Type[BaseModel], llm):
     """
     Extracts structured data from plain text using TrustCall.
 

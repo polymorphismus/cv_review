@@ -12,7 +12,10 @@ from langchain_openai import ChatOpenAI
 from extracting_data.extraction_graph import build_extraction_graph, run_extraction_flow
 from extracting_data.extracting_consts import JOB_DESCRIPTION, CV
 from extracting_data.receive_text_from_documents import ReadDocuments
-from match_evaluation.evaluation_graph import build_evaluation_graph, run_evaluation_flow
+from match_evaluation.evaluation_graph import (
+    build_evaluation_graph,
+    run_evaluation_flow,
+)
 from match_evaluation.agent_state import AgentState
 from improvement_suggestions.improvement_functions import (
     create_rewrite_state,
@@ -20,7 +23,10 @@ from improvement_suggestions.improvement_functions import (
     rewrite_cv_with_feedback,
     markdown_to_docx,
 )
-from improvement_suggestions.improvement_consts import UPDATED_CV_NAME, AMOUNT_FEEDBACK_ROUNDS
+from improvement_suggestions.improvement_consts import (
+    UPDATED_CV_NAME,
+    AMOUNT_FEEDBACK_ROUNDS,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -217,11 +223,18 @@ def render_evaluation_results(state: AgentState):
                         if isinstance(items, list) and items:
                             st.markdown("\n".join(f"- {item}" for item in items))
                         elif isinstance(items, dict) and items:
-                            st.markdown("\n".join(f"- {k}: {v}" for k, v in items.items()))
+                            st.markdown(
+                                "\n".join(f"- {k}: {v}" for k, v in items.items())
+                            )
                         else:
                             st.caption("None")
 
-            skip_keys = {"score", "reasoning", "red_flags"} | shown_keys | skip_extra | SKIP_ALWAYS
+            skip_keys = (
+                {"score", "reasoning", "red_flags"}
+                | shown_keys
+                | skip_extra
+                | SKIP_ALWAYS
+            )
             for key, val in data.items():
                 if key in skip_keys:
                     continue
@@ -252,12 +265,16 @@ def render_evaluation_results(state: AgentState):
                 st.markdown(reasoning_text)
 
     for title, result in eval_sections:
-        extra_skip = {"coverage_percentage"} if title == "Requirements coverage" else set()
+        extra_skip = (
+            {"coverage_percentage"} if title == "Requirements coverage" else set()
+        )
         render_section(title, result, skip_extra=extra_skip)
 
         # After keyword match, show focus areas dropdown if available
         if title == "Keyword match":
-            focus_areas = _get(state, "focus_areas", []) or _get(final_scoring, "focus_areas", [])
+            focus_areas = _get(state, "focus_areas", []) or _get(
+                final_scoring, "focus_areas", []
+            )
             if focus_areas:
                 with st.expander("Focus areas / recommendations"):
                     st.markdown("\n".join(f"- {fa}" for fa in focus_areas))
@@ -333,7 +350,9 @@ def render_rewrite_section(agent_state: AgentState, llm):
         st.info("Feedback limit reached.")
 
     # Handle download flow
-    if st.session_state.download_requested or (not st.session_state.docx_ready and rewrite_state.updated_cv_text):
+    if st.session_state.download_requested or (
+        not st.session_state.docx_ready and rewrite_state.updated_cv_text
+    ):
         with st.spinner("Preparing CV as doc..."):
             doc_info = markdown_to_docx(rewrite_state, llm)
             st.session_state.docx_path = doc_info.get("docx_path")
@@ -344,7 +363,11 @@ def render_rewrite_section(agent_state: AgentState, llm):
     if docx_path and Path(docx_path).exists():
         with open(docx_path, "rb") as f:
             clicked = st.download_button(
-                "Download updated CV" if not st.session_state.docx_downloaded else "Current version of CV downloaded",
+                (
+                    "Download updated CV"
+                    if not st.session_state.docx_downloaded
+                    else "Current version of CV downloaded"
+                ),
                 f,
                 file_name=Path(docx_path).name or UPDATED_CV_NAME,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -369,7 +392,9 @@ def render_rewrite_section(agent_state: AgentState, llm):
                     unsafe_allow_html=True,
                 )
     else:
-        if st.button("Download updated CV", use_container_width=True, key="download_request_btn"):
+        if st.button(
+            "Download updated CV", use_container_width=True, key="download_request_btn"
+        ):
             st.session_state.download_requested = True
             st.session_state.docx_downloaded = False
             st.rerun()
@@ -418,7 +443,14 @@ def main():
     progress_placeholder = col_main.empty()
 
     # Initialize persisted form fields (cache values, not widget keys)
-    for key in ["cv_text", "job_text", "cv_link_cached", "job_link_cached", "path_to_cv", "path_to_job"]:
+    for key in [
+        "cv_text",
+        "job_text",
+        "cv_link_cached",
+        "job_link_cached",
+        "path_to_cv",
+        "path_to_job",
+    ]:
         if key not in st.session_state:
             st.session_state[key] = ""
     if "assessment_button_hidden" not in st.session_state:
@@ -437,7 +469,14 @@ def main():
             st.session_state["job_link_input"] = ""
             st.session_state.pop("path_to_job", None)
             st.session_state.pop("job_upload", None)
-        for key in ["agent_state", "rewrite_state", "docx_path", "docx_ready", "docx_downloaded", "download_requested"]:
+        for key in [
+            "agent_state",
+            "rewrite_state",
+            "docx_path",
+            "docx_ready",
+            "docx_downloaded",
+            "download_requested",
+        ]:
             st.session_state.pop(key, None)
         st.session_state.assessment_running = False
         st.session_state.assessment_button_hidden = False
@@ -454,13 +493,27 @@ def main():
         except Exception:
             pass
         if cache_cv:
-            st.session_state.cv_text = getattr(state, "cv_description_text", st.session_state.get("cv_text", ""))
-            st.session_state.path_to_cv = getattr(state, "path_to_cv", st.session_state.get("path_to_cv"))
-            st.session_state.cv_link_cached = st.session_state.path_to_cv or st.session_state.get("cv_link_cached", "")
+            st.session_state.cv_text = getattr(
+                state, "cv_description_text", st.session_state.get("cv_text", "")
+            )
+            st.session_state.path_to_cv = getattr(
+                state, "path_to_cv", st.session_state.get("path_to_cv")
+            )
+            st.session_state.cv_link_cached = (
+                st.session_state.path_to_cv
+                or st.session_state.get("cv_link_cached", "")
+            )
         if cache_job:
-            st.session_state.job_text = getattr(state, "job_description_text", st.session_state.get("job_text", ""))
-            st.session_state.path_to_job = getattr(state, "path_to_job", st.session_state.get("path_to_job"))
-            st.session_state.job_link_cached = st.session_state.path_to_job or st.session_state.get("job_link_cached", "")
+            st.session_state.job_text = getattr(
+                state, "job_description_text", st.session_state.get("job_text", "")
+            )
+            st.session_state.path_to_job = getattr(
+                state, "path_to_job", st.session_state.get("path_to_job")
+            )
+            st.session_state.job_link_cached = (
+                st.session_state.path_to_job
+                or st.session_state.get("job_link_cached", "")
+            )
 
     def reset_for_another_position():
         cache_from_state(cache_cv=True, cache_job=False)
@@ -476,11 +529,19 @@ def main():
     with col_sidebar:
         with st.container():
             st.markdown('<div class="sidebar-inner">', unsafe_allow_html=True)
-            if st.button("Assess with another position", use_container_width=True, key="btn_another_position"):
+            if st.button(
+                "Assess with another position",
+                use_container_width=True,
+                key="btn_another_position",
+            ):
                 reset_for_another_position()
-            if st.button("Assess with another CV", use_container_width=True, key="btn_another_cv"):
+            if st.button(
+                "Assess with another CV", use_container_width=True, key="btn_another_cv"
+            ):
                 reset_for_another_cv()
-            if st.button("New assessment", use_container_width=True, key="btn_new_assessment"):
+            if st.button(
+                "New assessment", use_container_width=True, key="btn_new_assessment"
+            ):
                 reset_for_new_assessment()
             st.divider()
             st.markdown('<div class="scroll-messages">', unsafe_allow_html=True)
@@ -507,7 +568,9 @@ def main():
             with col_cv:
                 st.markdown("**CV**: choose option to provide it below")
                 cv_text = st.text_area("Paste CV text", height=200, key="cv_text")
-                cv_upload = st.file_uploader("Upload CV file (.pdf, .docx, .txt)", key="cv_upload")
+                cv_upload = st.file_uploader(
+                    "Upload CV file (.pdf, .docx, .txt)", key="cv_upload"
+                )
                 cv_link = st.text_input(
                     "CV link or local path",
                     value=st.session_state.get("cv_link_cached", ""),
@@ -515,8 +578,12 @@ def main():
                 )
             with col_job:
                 st.markdown("**Job description**: choose option to provide it below")
-                job_text = st.text_area("Paste job description text", height=200, key="job_text")
-                job_upload = st.file_uploader("Upload job description file (.pdf, .docx, .txt)", key="job_upload")
+                job_text = st.text_area(
+                    "Paste job description text", height=200, key="job_text"
+                )
+                job_upload = st.file_uploader(
+                    "Upload job description file (.pdf, .docx, .txt)", key="job_upload"
+                )
                 job_link = st.text_input(
                     "Job link or local path",
                     value=st.session_state.get("job_link_cached", ""),
@@ -544,10 +611,18 @@ def main():
                 {"text": "Assessing skills...", "status": "pending"},
                 {"text": "Weighting scores based on importance", "status": "pending"},
             ]
-            render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+            render_steps(
+                "<span style='font-size:28px'>Running assessment...</span>",
+                extraction_steps + evaluation_steps,
+                progress_placeholder,
+            )
             try:
-                cv_desc, cv_path = prepare_document(CV, cv_text, cv_link, cv_upload, llm)
-                job_desc, job_path = prepare_document(JOB_DESCRIPTION, job_text, job_link, job_upload, llm)
+                cv_desc, cv_path = prepare_document(
+                    CV, cv_text, cv_link, cv_upload, llm
+                )
+                job_desc, job_path = prepare_document(
+                    JOB_DESCRIPTION, job_text, job_link, job_upload, llm
+                )
                 st.session_state.path_to_cv = cv_path
                 st.session_state.path_to_job = job_path
                 if cv_path:
@@ -556,7 +631,9 @@ def main():
                     st.session_state.job_link_cached = job_path
 
                 if not cv_desc or not job_desc:
-                    st.error("Please provide both CV and job description (text, file, or link).")
+                    st.error(
+                        "Please provide both CV and job description (text, file, or link)."
+                    )
                     st.session_state.assessment_running = False
                     st.session_state.assessment_button_hidden = False
                 else:
@@ -566,21 +643,37 @@ def main():
                         cv_description_text=cv_desc,
                         job_description_text=job_desc,
                     )
-                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    render_steps(
+                        "<span style='font-size:28px'>Running assessment...</span>",
+                        extraction_steps + evaluation_steps,
+                        progress_placeholder,
+                    )
                     extracted_state = run_extraction_flow(
-                        base_state, llm=llm, extraction_graph=st.session_state.extraction_graph
+                        base_state,
+                        llm=llm,
+                        extraction_graph=st.session_state.extraction_graph,
                     )
                     for step in extraction_steps:
                         step["status"] = "done"
                     for step in evaluation_steps:
                         step["status"] = "running"
-                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    render_steps(
+                        "<span style='font-size:28px'>Running assessment...</span>",
+                        extraction_steps + evaluation_steps,
+                        progress_placeholder,
+                    )
                     evaluated_state = run_evaluation_flow(
-                        extracted_state, llm=llm, evaluation_graph=st.session_state.evaluation_graph
+                        extracted_state,
+                        llm=llm,
+                        evaluation_graph=st.session_state.evaluation_graph,
                     )
                     for step in evaluation_steps:
                         step["status"] = "done"
-                    render_steps("<span style='font-size:28px'>Running assessment...</span>", extraction_steps + evaluation_steps, progress_placeholder)
+                    render_steps(
+                        "<span style='font-size:28px'>Running assessment...</span>",
+                        extraction_steps + evaluation_steps,
+                        progress_placeholder,
+                    )
                     try:
                         evaluated_state = AgentState.model_validate(evaluated_state)
                     except Exception:
@@ -589,12 +682,14 @@ def main():
                     st.session_state.rewrite_state = None
                     st.session_state.docx_path = None
                     st.session_state.assessment_running = False
-                    add_message("assistant", "Match assessment complete")
+                    add_message("assistant", "Match assessment completed")
                     st.rerun()
             except Exception:
                 st.session_state.assessment_running = False
                 st.session_state.assessment_button_hidden = False
-    elif st.session_state.assessment_running and not st.session_state.get("agent_state"):
+    elif st.session_state.assessment_running and not st.session_state.get(
+        "agent_state"
+    ):
         with col_main:
             st.info("Running assessment...")
     else:

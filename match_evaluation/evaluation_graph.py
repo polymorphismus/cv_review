@@ -1,8 +1,9 @@
 from langgraph.graph import StateGraph, START, END
 from functools import partial
 from match_evaluation.agent_state import AgentState
-from match_evaluation.parallel_execution import * 
+from match_evaluation.parallel_execution import *
 from extracting_data.extraction_functions import *
+
 
 def build_evaluation_graph(llm) -> StateGraph:
     g = StateGraph(AgentState)
@@ -11,15 +12,21 @@ def build_evaluation_graph(llm) -> StateGraph:
     g.add_node("domain_match", partial(domain_match_agent_sync, llm=llm))
     g.add_node("seniority_match", partial(seniority_match_agent_sync, llm=llm))
     g.add_node("recency_relevance", partial(recency_relevance_agent_sync, llm=llm))
-    g.add_node("requirements_coverage", partial(requirements_coverage_agent_sync, llm=llm))
+    g.add_node(
+        "requirements_coverage", partial(requirements_coverage_agent_sync, llm=llm)
+    )
     g.add_node("keyword_match", partial(keyword_macth_agent_sync, llm=llm))
     g.add_node("weight_generation", partial(weight_generation_agent_sync, llm=llm))
     g.add_node("scoring", partial(scoring_agent_sync, llm=llm))
 
     for node in [
-        "qualification_match", "skills_match", "domain_match",
-        "seniority_match", "recency_relevance",
-        "requirements_coverage", "keyword_match",
+        "qualification_match",
+        "skills_match",
+        "domain_match",
+        "seniority_match",
+        "recency_relevance",
+        "requirements_coverage",
+        "keyword_match",
     ]:
         g.add_edge(START, node)
         g.add_edge(node, "weight_generation")

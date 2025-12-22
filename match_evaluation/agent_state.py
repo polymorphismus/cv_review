@@ -3,17 +3,18 @@ from typing import Optional
 from extracting_data.description_schemas import CVDescription, JobDescription
 from match_evaluation.output_schemas import *
 
+
 class AgentState(BaseModel):
     path_to_cv: Optional[str] = None
     path_to_job: Optional[str] = None
 
     cv_description_text: Optional[str] = None
     job_description_text: Optional[str] = None
-    
+
     cv: Optional[CVDescription] = None
     job: Optional[JobDescription] = None
 
-    qualification_match: Optional[QualificationMatchResult] = None    
+    qualification_match: Optional[QualificationMatchResult] = None
     skills_match: Optional[SkillsMatchResult] = None
     domain_match: Optional[DomainMatchResult] = None
     seniority_match: Optional[SeniorityMatchResult] = None
